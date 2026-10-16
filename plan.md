@@ -1,0 +1,10 @@
+1. Make `generate_content_text` in `gemini_provider.py` an async function (or add `generate_content_text_async`).
+2. Use `aiohttp` or `asyncio.to_thread` for the network call. Oh, the repo only uses standard library `urllib`. I can just use `asyncio.to_thread` to wrap `urllib.request.urlopen` since we shouldn't add new dependencies if we don't have to (and `aiohttp` isn't installed).
+3. Actually, we can use `asyncio.to_thread` to run the blocking `urllib.request.urlopen` inside `gemini_provider.py`? Or we can use Flask async views.
+4. Let's make `app.py`'s `@app.route("/api/generate", methods=["POST"])` an `async def generate()` view.
+5. Then `call_gemini` and `generate_content_text` need to be async or run via `asyncio.to_thread`.
+6. Wait, if `urllib.request.urlopen` is wrapped in `asyncio.to_thread`, it releases the GIL while waiting for I/O, allowing the async event loop to serve other requests concurrently, improving throughput.
+7. Flask + `asgiref` lets us use `async def generate()`. But wait, in a sync Flask app, if we use `asyncio.to_thread` or `concurrent.futures.ThreadPoolExecutor`, we don't necessarily have to make the view async if we just want to run it in a threadpool... wait, if it's a WSGI app, the WSGI server (like gunicorn with sync workers, or the built-in dev server) gives us a thread per request anyway, so I/O blocking already blocks one thread but other threads can run.
+8. The prompt states: "Rationale: It's a sync Flask app, making it async would be a larger change, but changing to async views could improve throughput."
+9. Let's change `generate` view to `async def generate():`. Change `call_gemini` to `async def call_gemini()`. Change `gemini_provider.generate_content_text` to `async def generate_content_text()`. Use `asyncio.to_thread` for the `urllib.request.urlopen`. Wait, `asyncio.to_thread` is Python 3.9+. We have Python 3.12 here, so it's fine.
+10. Does `judge0_provider.verify_code` also use `urllib.request.urlopen`? Yes. We could also make `verify` an `async def verify()` and use `asyncio.to_thread`.

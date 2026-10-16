@@ -64,11 +64,11 @@ SAMPLE_COURSE = {
     ]
 }
 
-def call_gemini(prompt):
+async def call_gemini(prompt):
     if not GEMINI_API_KEY:
         return None, "AI generation is unavailable because GEMINI_API_KEY is not configured."
     try:
-        response_text = gemini_provider.generate_content_text(
+        response_text = await gemini_provider.generate_content_text(
             GEMINI_API_KEY, GEMINI_MODEL, prompt,
             fallback_models=GEMINI_FALLBACK_MODELS,
         )
@@ -110,7 +110,7 @@ def sample():
                     "source":course["_source"], "generationStatus":"sample"})
 
 @app.route("/api/generate", methods=["POST"])
-def generate():
+async def generate():
     data = request.get_json(silent=True)
     inputs, validation_error = validate_generation_request(data)
     if validation_error:
@@ -120,7 +120,7 @@ def generate():
     duration = inputs["durationMinutes"]
     language = inputs["language"]
     prompt = build_generation_prompt(topic, level, duration, language)
-    course, message = call_gemini(prompt)
+    course, message = await call_gemini(prompt)
     if not course:
         invalid_content = message.startswith("AI provider returned invalid course content:")
         return jsonify({"course":None, "message":message, "source":"unavailable",
@@ -172,7 +172,7 @@ Requirements:
 """
 
 @app.route("/api/verify", methods=["POST"])
-def verify():
+async def verify():
     data = request.get_json(silent=True)
     if not isinstance(data, dict):
         return jsonify({"error":"Request body must be a JSON object."}), 400
@@ -200,7 +200,7 @@ def verify():
             "details":"Configure JUDGE0_URL (and JUDGE0_API_KEY if required) to enable real execution. This is intentionally not reported as a pass.",
             "runnerDescription":"No isolated runner configured."
         })
-    result = judge0_provider.verify_code(
+    result = await judge0_provider.verify_code(
         JUDGE0_URL,
         language,
         code,

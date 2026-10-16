@@ -1,3 +1,4 @@
+import asyncio
 """Regression tests for the existing Flask application."""
 
 import io
@@ -176,8 +177,8 @@ class FlaskAppTests(unittest.TestCase):
         with mock.patch.object(course_app, "GEMINI_API_KEY", "fake-provider-key"), \
              mock.patch.object(course_app, "GEMINI_FALLBACK_MODELS", ("gemini-3.8-flash",)), \
              mock.patch.object(course_app.gemini_provider.urllib.request, "urlopen", side_effect=[unavailable, provider_response]) as urlopen, \
-             mock.patch.object(course_app.gemini_provider.time, "sleep"):
-            course, message = course_app.call_gemini("safe prompt")
+             mock.patch.object(course_app.gemini_provider.asyncio, "sleep"):
+            course, message = asyncio.run(course_app.call_gemini("safe prompt"))
 
         self.assertIsNotNone(course)
         self.assertIn("Gemini", message)
@@ -193,7 +194,7 @@ class FlaskAppTests(unittest.TestCase):
         with mock.patch.object(course_app, "GEMINI_API_KEY", "fake-provider-key"), \
              mock.patch.object(course_app, "GEMINI_FALLBACK_MODELS", ()), \
              mock.patch.object(course_app.gemini_provider.urllib.request, "urlopen", side_effect=denied) as urlopen:
-            course, message = course_app.call_gemini("safe prompt")
+            course, message = asyncio.run(course_app.call_gemini("safe prompt"))
 
         self.assertIsNone(course)
         self.assertIn("rejected", message.lower())
@@ -209,8 +210,8 @@ class FlaskAppTests(unittest.TestCase):
         with mock.patch.object(course_app, "GEMINI_API_KEY", "configured-for-test"), \
              mock.patch.object(course_app, "GEMINI_FALLBACK_MODELS", ()), \
              mock.patch.object(course_app.gemini_provider.urllib.request, "urlopen", side_effect=[transient, provider_response]) as urlopen, \
-             mock.patch.object(course_app.gemini_provider.time, "sleep") as sleep:
-            course, _ = course_app.call_gemini("safe prompt")
+             mock.patch.object(course_app.gemini_provider.asyncio, "sleep") as sleep:
+            course, _ = asyncio.run(course_app.call_gemini("safe prompt"))
 
         self.assertIsNotNone(course)
         self.assertEqual(urlopen.call_count, 2)
@@ -273,7 +274,7 @@ class FlaskAppTests(unittest.TestCase):
 
         with mock.patch.object(course_app, "GEMINI_API_KEY", "test-key-not-a-real-credential"), \
              mock.patch.object(course_app.gemini_provider.urllib.request, "urlopen", return_value=provider_response) as urlopen:
-            course, message = course_app.call_gemini("safe test prompt")
+            course, message = asyncio.run(course_app.call_gemini("safe test prompt"))
 
         self.assertIsNone(course)
         self.assertIn("correctIndex", message)
@@ -287,7 +288,7 @@ class FlaskAppTests(unittest.TestCase):
 
         with mock.patch.object(course_app, "GEMINI_API_KEY", "test-key-not-a-real-credential"), \
              mock.patch.object(course_app.gemini_provider.urllib.request, "urlopen", return_value=provider_response) as urlopen:
-            course, message = course_app.call_gemini("safe test prompt")
+            course, message = asyncio.run(course_app.call_gemini("safe test prompt"))
 
         self.assertIsNone(course)
         self.assertIn("invalid course content", message)
