@@ -217,6 +217,26 @@ class FlaskAppTests(unittest.TestCase):
         self.assertEqual(urlopen.call_args_list[0].args[0].full_url, urlopen.call_args_list[1].args[0].full_url)
         sleep.assert_called_once()
 
+
+
+    def test_generation_clamps_duration_to_bounds(self):
+        cases = [(5, 10), (300, 240)]
+        for input_duration, expected_duration in cases:
+            with self.subTest(input_duration=input_duration, expected_duration=expected_duration):
+                with mock.patch.object(course_app, "call_gemini", return_value=(SAMPLE_COURSE, "Mocked")) as mock_call_gemini:
+                    response = self.client.post("/api/generate", json={
+                        "topic": "Python basics",
+                        "level": "Beginner",
+                        "durationMinutes": input_duration,
+                        "language": "Python",
+                    })
+
+                self.assertEqual(response.status_code, 200)
+                mock_call_gemini.assert_called_once()
+                # Check that the prompt passed to call_gemini contains the expected clamped duration
+                prompt = mock_call_gemini.call_args.args[0]
+                self.assertIn(f"Session duration: {expected_duration} minutes", prompt)
+
     def test_invalid_generation_inputs_return_client_errors(self):
         invalid_requests = [
             ("not-json", True),
