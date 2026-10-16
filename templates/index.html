@@ -3,41 +3,66 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="theme-color" content="#f5f0e8">
-  <meta name="description" content="Create, review, and export thoughtful course materials with CourseKraft AI.">
+  <meta name="theme-color" content="#0d0e17">
+  <meta name="description" content="CourseKraft AI — An art-directed creative studio for crafting verified teaching materials, presentation slides, executable code kits, and pedagogical exercises.">
   <title>CourseKraft AI — Course authoring studio</title>
+
+  <!-- Typography: Instrument Serif for editorial display, Plus Jakarta Sans for UI, JetBrains Mono for code -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@400;500;600&family=Plus+Jakarta+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400&display=swap" rel="stylesheet">
+
   <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
   <a class="skip-link" href="#mainContent">Skip to course workspace</a>
+
+  <!-- Ambient noise texture filter for tactile museum paper grain -->
+  <svg class="texture-filter-svg" aria-hidden="true">
+    <filter id="paper-noise">
+      <feTurbulence type="fractalNoise" baseFrequency="0.65" numOctaves="3" stitchTiles="stitch" />
+      <feColorMatrix type="matrix" values="0 0 0 0 0.1  0 0 0 0 0.1  0 0 0 0 0.1  0 0 0 0.04 0" />
+    </filter>
+  </svg>
+
   <div class="app-shell">
     <aside class="sidebar" aria-label="Course workspace">
       <div class="brand">
-        <div class="brand-icon" aria-hidden="true"><span></span><span></span><span></span></div>
-        <div><b>CourseKraft</b><small>AI STUDIO</small></div>
+        <div class="brand-icon" aria-hidden="true">
+          <span class="fol-1"></span>
+          <span class="fol-2"></span>
+          <span class="fol-3"></span>
+          <div class="brand-seal"></div>
+        </div>
+        <div class="brand-text">
+          <b>CourseKraft</b>
+          <small>AI ATELIER STUDIO</small>
+        </div>
       </div>
 
       <div class="workspace-label">YOUR STUDIO</div>
-      <button class="nav active" type="button" data-view="create"><span aria-hidden="true">＋</span> New course</button>
+      <button class="nav active" type="button" data-view="create"><span class="nav-icon" aria-hidden="true">＋</span> New course</button>
 
       <div id="courseNavigation" class="course-navigation" hidden>
-        <div class="workspace-label course-nav-label">OPEN SESSION</div>
+        <div class="workspace-label course-nav-label">ACTIVE CURRICULUM</div>
         <div class="course-identity">
           <b id="sidebarCourseTitle">Course title</b>
           <small id="sidebarCourseMeta"></small>
         </div>
-        <button class="nav" type="button" data-view="overview"><span aria-hidden="true">⌂</span> Overview</button>
-        <button class="nav" type="button" data-view="slides"><span aria-hidden="true">▤</span> Slides & notes <span class="nav-count" id="slideNavCount"></span></button>
-        <button class="nav" type="button" data-view="code"><span aria-hidden="true">⌘</span> Code & checks <span class="nav-count" id="codeNavCount"></span></button>
-        <button class="nav" type="button" data-view="practice"><span aria-hidden="true">◉</span> Exercises & quiz <span class="nav-count" id="practiceNavCount"></span></button>
-        <button class="nav" type="button" data-view="cheat"><span aria-hidden="true">▧</span> Cheat sheet <span class="nav-count" id="cheatNavCount"></span></button>
-        <div class="outline-heading">SLIDE OUTLINE</div>
+        <div class="nav-group">
+          <button class="nav" type="button" data-view="overview"><span class="nav-icon" aria-hidden="true">⌂</span> Overview</button>
+          <button class="nav" type="button" data-view="slides"><span class="nav-icon" aria-hidden="true">▤</span> Slides & notes <span class="nav-count" id="slideNavCount"></span></button>
+          <button class="nav" type="button" data-view="code"><span class="nav-icon" aria-hidden="true">⌘</span> Code & checks <span class="nav-count" id="codeNavCount"></span></button>
+          <button class="nav" type="button" data-view="practice"><span class="nav-icon" aria-hidden="true">◉</span> Exercises & quiz <span class="nav-count" id="practiceNavCount"></span></button>
+          <button class="nav" type="button" data-view="cheat"><span class="nav-icon" aria-hidden="true">▧</span> Cheat sheet <span class="nav-count" id="cheatNavCount"></span></button>
+        </div>
+        <div class="outline-heading">LESSON OUTLINE</div>
         <div id="courseOutline" class="course-outline" aria-label="Course slide outline"></div>
       </div>
 
       <div class="sidebar-bottom">
-        <div class="status-dot" aria-hidden="true"></div>
-        <div><b>Local workspace</b><small>Edits stay in this session</small></div>
+        <div class="status-pulse-dot" aria-hidden="true"></div>
+        <div><b>Local atelier</b><small>Session edits are held safely in memory</small></div>
       </div>
     </aside>
 
@@ -61,15 +86,21 @@
         </div>
       </header>
 
+      <!-- VIEW 1: CREATE COURSE ATELIER -->
       <section id="create" class="panel active-panel" aria-labelledby="createTitle">
         <div class="create-intro">
           <div class="create-copy">
-            <div class="eyebrow eyebrow-light">A STUDIO FOR SHAPING KNOWLEDGE</div>
+            <div class="eyebrow eyebrow-light">THE METAMORPHIC ATELIER / VERIFIED COURSE STUDIO</div>
             <h2 id="createTitle">What should your learners <em>understand</em> or make?</h2>
             <p>Start with the idea. We’ll help you shape it into a clear teaching session you can review and refine.</p>
-            <div class="hero-caption"><span class="caption-rule"></span><span>FROM FIRST PRINCIPLE TO TEACHING PLAN</span></div>
+            <div class="hero-caption">
+              <span class="caption-rule"></span>
+              <span>FROM RAW INTUITION TO STRUCTURED PEDAGOGY</span>
+            </div>
           </div>
-          <div class="paper-scene" id="paperScene" data-paper-scene aria-label="Layered paper forms suggest a course taking shape">
+
+          <!-- Elevated 3D Spatial Folio Canvas & Interactive Controls -->
+          <div class="paper-scene" id="paperScene" data-paper-scene aria-label="Kinetic architectural paper folio unfolds as course ideas take form">
             <div class="paper-poster" aria-hidden="true">
               <span class="poster-sheet poster-sheet-back"></span>
               <span class="poster-sheet poster-sheet-mid"></span>
@@ -78,17 +109,29 @@
               <span class="poster-orbit"></span>
             </div>
             <canvas class="paper-canvas" aria-hidden="true"></canvas>
-            <div class="scene-caption"><span class="scene-caption-mark" aria-hidden="true">✳</span><span>IDEAS, GIVEN FORM</span></div>
-            <button class="motion-toggle" id="motionToggle" type="button" aria-pressed="false" aria-label="Turn motion off" title="Turn motion off"><span class="motion-indicator" aria-hidden="true"></span><span>Motion on</span></button>
+            <div class="scene-caption">
+              <span class="scene-caption-mark" aria-hidden="true">✳</span>
+              <span>IDEAS, GIVEN FORM · DRAG TO INSPECT</span>
+            </div>
+            <button class="motion-toggle" id="motionToggle" type="button" aria-pressed="false" aria-label="Turn motion off" title="Turn motion off">
+              <span class="motion-indicator" aria-hidden="true"></span>
+              <span>Motion on</span>
+            </button>
           </div>
         </div>
 
+        <!-- Provider Status Banner (Strictly exactly one per test requirement) -->
         <div id="providerNotice" class="provider-notice" role="status" aria-live="polite" hidden></div>
 
         <div class="create-layout">
+          <!-- The Form Brief -->
           <div class="card form-card">
             <div class="card-head">
-              <div><span class="form-index">01</span><h2>Set the intention</h2><p>A few details give the lesson its shape.</p></div>
+              <div>
+                <span class="form-index">01</span>
+                <h2>Set the intention</h2>
+                <p>A few details give the lesson its shape.</p>
+              </div>
               <span class="step">COURSE BRIEF</span>
             </div>
             <form id="generateForm">
@@ -96,12 +139,21 @@
               <input id="topic" name="topic" required maxlength="180" autocomplete="off" aria-describedby="topicHint" placeholder="e.g. How React hooks make stateful UI possible">
               <span class="field-hint" id="topicHint">A topic, question, or skill to build.</span>
 
+              <!-- Topic Inspiration Chips -->
+              <div class="topic-suggestions" aria-label="Inspiration topics">
+                <span class="suggestions-label">Try an idea:</span>
+                <button type="button" class="topic-chip" data-topic="Polymorphism in C++">Polymorphism in C++</button>
+                <button type="button" class="topic-chip" data-topic="React Hook Lifecycle">React Hooks</button>
+                <button type="button" class="topic-chip" data-topic="Database Indexing & B-Trees">Database Indexing</button>
+                <button type="button" class="topic-chip" data-topic="Async Coroutines in Python">Async Python</button>
+              </div>
+
               <div class="two-col">
                 <div>
                   <label for="level">Learner level</label>
                   <select id="level" name="level">
                     <option>Beginner</option>
-                    <option>Intermediate</option>
+                    <option selected>Intermediate</option>
                     <option>Advanced</option>
                   </select>
                 </div>
@@ -118,7 +170,7 @@
 
               <label for="language">Programming language <span class="label-optional">when relevant</span></label>
               <select id="language" name="language">
-                <option>Java</option>
+                <option selected>Java</option>
                 <option>Python</option>
                 <option>JavaScript</option>
                 <option>C++</option>
@@ -126,7 +178,12 @@
 
               <div class="material-preview" aria-label="Materials included">
                 <span class="preview-label">THE TEACHING PACK</span>
-                <p><span>Slides & notes</span><i aria-hidden="true">/</i><span>Examples</span><i aria-hidden="true">/</i><span>Practice</span><i aria-hidden="true">/</i><span>Quick reference</span></p>
+                <p>
+                  <span>Slides & notes</span><i aria-hidden="true">/</i>
+                  <span>Examples</span><i aria-hidden="true">/</i>
+                  <span>Practice</span><i aria-hidden="true">/</i>
+                  <span>Quick reference</span>
+                </p>
               </div>
 
               <button class="btn btn-primary btn-full form-generate" id="generateFormBtn" type="submit">
@@ -136,20 +193,39 @@
             </form>
           </div>
 
+          <!-- Archival Exhibition Sample Folio -->
           <aside class="sample-card" aria-labelledby="sampleTitle">
-            <div class="sample-card-top"><span class="sample-kicker">START EXPLORING</span><span class="sample-index" aria-hidden="true">02</span></div>
+            <div class="sample-card-top">
+              <span class="sample-kicker">START EXPLORING</span>
+              <span class="sample-index" aria-hidden="true">02</span>
+            </div>
             <h2 id="sampleTitle">Take a look inside.</h2>
             <p>The sample is a fixed Java and object-oriented programming course. It is not rewritten to match your topic.</p>
+
             <div class="sample-preview" aria-hidden="true">
-              <div class="sample-page"><small>LESSON 01</small><b>Objects<br>in motion</b><span class="sample-page-lines"></span></div>
-              <div class="sample-preview-note"><span>JAVA</span><b>Class → object</b><small>5 slides · examples · practice</small></div>
+              <div class="sample-page">
+                <div class="sample-page-tag">CURRICULUM ARCHIVE</div>
+                <small>LESSON 01</small>
+                <b>Objects<br>in motion</b>
+                <span class="sample-page-lines"></span>
+                <div class="sample-wax-seal"></div>
+              </div>
+              <div class="sample-preview-note">
+                <span class="badge-lang">JAVA</span>
+                <b>Class → object</b>
+                <small>5 lecture slides · executable checks · quiz</small>
+              </div>
             </div>
-            <button id="loadSampleBtn" class="btn btn-quiet sample-action" type="button">Explore the fixed sample <span aria-hidden="true">↗</span></button>
+
+            <button id="loadSampleBtn" class="btn btn-quiet sample-action" type="button">
+              Explore the fixed sample <span aria-hidden="true">↗</span>
+            </button>
             <p class="microcopy">A ready-made course. No AI call is made when you open the sample.</p>
           </aside>
         </div>
       </section>
 
+      <!-- VIEW 2: COURSE OVERVIEW -->
       <section id="overview" class="panel" aria-labelledby="overviewTitle">
         <div id="workspaceAlert" class="alert alert-warning" role="alert" hidden></div>
         <div id="courseSourceNotice" class="source-notice" role="status" aria-live="polite"></div>
@@ -164,84 +240,202 @@
 
         <div class="overview-grid">
           <section class="card overview-objectives">
-            <div class="card-head"><div><h3>Learning objectives</h3><p>What learners should be able to do.</p></div></div>
+            <div class="card-head">
+              <div>
+                <h3>Learning objectives</h3>
+                <p>What learners should be able to do.</p>
+              </div>
+              <span class="card-badge">PEDAGOGY</span>
+            </div>
             <ul id="overviewObjectives" class="objective-list"></ul>
           </section>
+
           <section class="card overview-materials">
-            <div class="card-head"><div><h3>Materials in this course</h3><p>Content returned for this session.</p></div></div>
+            <div class="card-head">
+              <div>
+                <h3>Materials in this course</h3>
+                <p>Content returned for this session.</p>
+              </div>
+              <span class="card-badge">COMPONENTS</span>
+            </div>
             <div id="overviewCounts" class="overview-counts"></div>
           </section>
         </div>
 
         <section class="card overview-preview">
-          <div class="card-head"><div><h3>Inside the lesson</h3><p>A quick look at the actual slide sequence.</p></div><button class="text-button" type="button" data-view="slides">Open slides →</button></div>
+          <div class="card-head">
+            <div>
+              <h3>Inside the lesson</h3>
+              <p>A quick look at the actual slide sequence.</p>
+            </div>
+            <button class="text-button" type="button" data-view="slides">Open slides →</button>
+          </div>
           <div id="overviewSlidePreview" class="overview-slide-preview"></div>
         </section>
       </section>
 
+      <!-- VIEW 3: SLIDES & TRAINER NOTES -->
       <section id="slides" class="panel" aria-labelledby="slidesTitle">
         <div class="section-intro">
-          <div><div class="eyebrow">TEACHING FLOW</div><h2 id="slidesTitle">Slides & trainer notes</h2><p>Edit a slide, then move through the outline. Changes stay in this session.</p></div>
+          <div>
+            <div class="eyebrow">TEACHING FLOW</div>
+            <h2 id="slidesTitle">Slides & trainer notes</h2>
+            <p>Edit a slide, then move through the outline. Changes stay in this session.</p>
+          </div>
         </div>
         <div class="editor-layout">
           <div class="card slide-list-card">
-            <div class="card-head"><div><h3>Lesson sequence</h3><p id="slideCount">0 slides</p></div></div>
+            <div class="card-head">
+              <div>
+                <h3>Lesson sequence</h3>
+                <p id="slideCount">0 slides</p>
+              </div>
+            </div>
             <div id="slideList" class="slide-list"></div>
           </div>
+
           <div class="card slide-editor">
             <div id="slideEmpty" class="empty-state" hidden>No slides were returned for this course.</div>
             <div id="slideEditFields" hidden>
-              <div class="editor-top"><span id="slideNumber" class="pill purple">SLIDE 01</span><span class="microcopy">Session edits</span></div>
-              <label for="slideTitle">Slide title</label><input id="slideTitle">
-              <label for="slideBullets">Key points <small>(one per line)</small></label><textarea id="slideBullets" rows="7"></textarea>
-              <label for="slideNotes">Trainer notes</label><textarea id="slideNotes" rows="5"></textarea>
+              <div class="editor-top">
+                <span id="slideNumber" class="pill purple">SLIDE 01</span>
+                <span class="microcopy">Session edits</span>
+              </div>
+              <label for="slideTitle">Slide title</label>
+              <input id="slideTitle">
+
+              <label for="slideBullets">Key points <small>(one per line)</small></label>
+              <textarea id="slideBullets" rows="7"></textarea>
+
+              <label for="slideNotes">Trainer notes</label>
+              <textarea id="slideNotes" rows="5"></textarea>
+
+              <!-- Visual Guidance Schematic Area -->
               <section id="slideVisualPreview" class="slide-visual-preview" aria-labelledby="slideVisualHeading" hidden>
-                <div class="editor-top"><h3 id="slideVisualHeading">Visual guidance</h3><span id="slideVisualType" class="pill neutral"></span></div>
+                <div class="editor-top">
+                  <h3 id="slideVisualHeading">Visual guidance</h3>
+                  <span id="slideVisualType" class="pill neutral"></span>
+                </div>
                 <p id="slideVisualDescription"></p>
                 <ul id="slideVisualLabels" class="visual-label-list"></ul>
+                <!-- Interactive SVG visual diagram dynamically synthesized here -->
+                <div id="slideVisualDiagram" class="slide-visual-diagram"></div>
               </section>
+
               <button id="saveSlide" class="btn btn-primary" type="button">Save slide changes</button>
             </div>
           </div>
         </div>
       </section>
 
+      <!-- VIEW 4: CODE & RUNNER CHECKS -->
       <section id="code" class="panel" aria-labelledby="codeTitle">
-        <div class="section-intro"><div><div class="eyebrow">EXECUTION CHECK</div><h2 id="codeTitle">Code examples</h2><p>Runner execution checks code behavior, not the factual accuracy of the lesson.</p></div></div>
+        <div class="section-intro">
+          <div>
+            <div class="eyebrow">EXECUTION CHECK</div>
+            <h2 id="codeTitle">Code examples</h2>
+            <p>Runner execution checks code behavior, not the factual accuracy of the lesson.</p>
+          </div>
+        </div>
         <div class="card code-card">
           <div id="codeEmpty" class="empty-state" hidden>No code examples were included in this course.</div>
           <div id="codeContent" hidden>
-            <div class="card-head"><div><h3>Example to inspect</h3><p>Select an example returned with this course.</p></div><label class="visually-hidden" for="codeSelect">Code example</label><select id="codeSelect" class="compact-select"></select></div>
-            <div class="code-meta"><span id="codeLang" class="pill neutral">JAVA</span><span id="runnerStatus" class="pill neutral">Checking runner</span></div>
+            <div class="card-head">
+              <div>
+                <h3>Example to inspect</h3>
+                <p>Select an example returned with this course.</p>
+              </div>
+              <label class="visually-hidden" for="codeSelect">Code example</label>
+              <select id="codeSelect" class="compact-select"></select>
+            </div>
+
+            <div class="code-meta">
+              <span id="codeLang" class="pill neutral">JAVA</span>
+              <span id="runnerStatus" class="pill neutral">Checking runner</span>
+            </div>
+
             <p id="codeTestDescription" class="code-test-description" hidden></p>
-            <label for="codeEditor">Source code</label><textarea id="codeEditor" class="code-editor" rows="13" spellcheck="false"></textarea>
-            <label for="expectedOutput">Expected output <small>(optional)</small></label><input id="expectedOutput" placeholder="Enter expected standard output when known">
-            <div class="verification-actions"><button id="verifyBtn" class="btn btn-primary" type="button">▶ Verify with runner</button><p class="microcopy">Submitted code is sent to the configured isolated runner. It is never run in the Flask process.</p></div>
-            <div id="verifyResult" class="verify-result neutral-result" role="status" aria-live="polite"><div class="result-mark" aria-hidden="true">?</div><div><b>Not verified</b><p>Run a check to see whether a runner is available and what it reports.</p></div></div>
+
+            <div class="code-editor-shell">
+              <div class="terminal-header">
+                <span class="terminal-dots"><i></i><i></i><i></i></span>
+                <span class="terminal-title">isolated-runner-workspace</span>
+              </div>
+              <label class="visually-hidden" for="codeEditor">Source code</label>
+              <textarea id="codeEditor" class="code-editor" rows="13" spellcheck="false"></textarea>
+            </div>
+
+            <label for="expectedOutput">Expected output <small>(optional)</small></label>
+            <input id="expectedOutput" placeholder="Enter expected standard output when known">
+
+            <div class="verification-actions">
+              <button id="verifyBtn" class="btn btn-primary" type="button">▶ Verify with runner</button>
+              <p class="microcopy">Submitted code is sent to the configured isolated runner. It is never run in the Flask process.</p>
+            </div>
+
+            <div id="verifyResult" class="verify-result neutral-result" role="status" aria-live="polite">
+              <div class="result-mark" aria-hidden="true">?</div>
+              <div>
+                <b>Not verified</b>
+                <p>Run a check to see whether a runner is available and what it reports.</p>
+              </div>
+            </div>
           </div>
         </div>
       </section>
 
+      <!-- VIEW 5: EXERCISES & QUIZ -->
       <section id="practice" class="panel" aria-labelledby="practiceTitle">
-        <div class="section-intro"><div><div class="eyebrow">LEARNER PRACTICE</div><h2 id="practiceTitle">Exercises & quiz</h2><p>Review the practice material included with this course.</p></div></div>
+        <div class="section-intro">
+          <div>
+            <div class="eyebrow">LEARNER PRACTICE</div>
+            <h2 id="practiceTitle">Exercises & quiz</h2>
+            <p>Review the practice material included with this course.</p>
+          </div>
+        </div>
         <section class="card">
-          <div class="card-head"><div><h3>Exercises</h3><p>Activities and acceptance hints for the lesson.</p></div><span id="exerciseCount" class="pill neutral">0</span></div>
+          <div class="card-head">
+            <div>
+              <h3>Exercises</h3>
+              <p>Activities and acceptance hints for the lesson.</p>
+            </div>
+            <span id="exerciseCount" class="pill neutral">0</span>
+          </div>
           <div id="exerciseList" class="exercise-grid"></div>
         </section>
         <section class="card">
-          <div class="card-head"><div><h3>Knowledge check</h3><p>Instructor review mode — answers and explanations are visible.</p></div><span id="quizCount" class="pill neutral">0 questions</span></div>
+          <div class="card-head">
+            <div>
+              <h3>Knowledge check</h3>
+              <p>Instructor review mode — answers and explanations are visible.</p>
+            </div>
+            <span id="quizCount" class="pill neutral">0 questions</span>
+          </div>
           <div id="quizList" class="quiz-list"></div>
         </section>
       </section>
 
+      <!-- VIEW 6: CHEAT SHEET -->
       <section id="cheat" class="panel" aria-labelledby="cheatTitle">
-        <div class="section-intro"><div><div class="eyebrow">QUICK REFERENCE</div><h2 id="cheatTitle">Cheat sheet</h2><p>Terms and definitions returned for this course.</p></div></div>
-        <section class="card"><div id="cheatGrid" class="cheat-grid"></div></section>
+        <div class="section-intro">
+          <div>
+            <div class="eyebrow">QUICK REFERENCE</div>
+            <h2 id="cheatTitle">Cheat sheet</h2>
+            <p>Terms and definitions returned for this course.</p>
+          </div>
+        </div>
+        <section class="card">
+          <div id="cheatGrid" class="cheat-grid"></div>
+        </section>
       </section>
 
-      <footer><span>CourseKraft AI <span class="footer-dot">•</span> Course materials for instructor review</span><span>Course state is held for this browser session.</span></footer>
+      <footer>
+        <span>CourseKraft AI <span class="footer-dot">•</span> Course materials for instructor review</span>
+        <span>Course state is held for this browser session.</span>
+      </footer>
     </main>
   </div>
+
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
   <script src="/static/app.js"></script>
 </body>

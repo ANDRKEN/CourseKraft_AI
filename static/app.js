@@ -7,6 +7,7 @@ let paperSceneInstance = null;
 let paperSceneModulePromise = null;
 let paperMotionEnabled = !window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 let paperSceneNearViewport = false;
+
 const views = {
   create: ["Create a course", "Shape a focused teaching session, then review every material before sharing it."],
   overview: ["Course overview", "Review the course details and the materials returned for this session."],
@@ -24,6 +25,7 @@ function esc(value) {
 
 function toast(message) {
   const node = $("toast");
+  if (!node) return;
   node.textContent = message;
   node.classList.add("show");
   window.setTimeout(() => node.classList.remove("show"), 3200);
@@ -31,6 +33,7 @@ function toast(message) {
 
 function setNotice(message = "", kind = "status") {
   const node = $("providerNotice");
+  if (!node) return;
   node.textContent = message;
   node.hidden = !message;
   node.setAttribute("role", kind === "error" ? "alert" : "status");
@@ -226,6 +229,55 @@ function renderOutline() {
   }));
 }
 
+function renderVisualDiagram(slide) {
+  const container = $("slideVisualDiagram");
+  if (!container) return;
+  const labels = Array.isArray(slide.visualLabels) && slide.visualLabels.length
+    ? slide.visualLabels
+    : ["Input", "Core Process", "Target Output"];
+  const type = String(slide.visualType || "flowchart").toLowerCase();
+
+  if (type === "comparison") {
+    container.innerHTML = `
+      <div style="display:flex;gap:14px;align-items:stretch;">
+        <div style="flex:1;background:#fbfafd;border:1.5px solid #d4ccff;border-radius:8px;padding:12px;">
+          <b style="color:#432ac9;font-size:0.82rem;display:block;margin-bottom:4px;">${esc(labels[0] || "Component A")}</b>
+          <span style="font-size:0.75rem;color:#64667d;">Primary state / structure</span>
+        </div>
+        <div style="display:flex;align-items:center;color:#f29e85;font-weight:800;font-size:0.85rem;">VS</div>
+        <div style="flex:1;background:#fff8f6;border:1.5px solid #fecaca;border-radius:8px;padding:12px;">
+          <b style="color:#7a3826;font-size:0.82rem;display:block;margin-bottom:4px;">${esc(labels[1] || "Component B")}</b>
+          <span style="font-size:0.75rem;color:#64667d;">Counterpart / method</span>
+        </div>
+      </div>
+    `;
+  } else if (type === "timeline" || type === "process") {
+    container.innerHTML = `
+      <div style="display:flex;align-items:center;justify-content:space-between;position:relative;padding:8px 6px;">
+        <div style="position:absolute;top:18px;left:24px;right:24px;height:2px;background:#e2dcd2;z-index:0;"></div>
+        ${labels.map((lbl, idx) => `
+          <div style="position:relative;z-index:1;text-align:center;">
+            <div style="width:24px;height:24px;border-radius:50%;background:#6f54f7;color:#fff;font-size:0.68rem;font-weight:700;display:grid;place-items:center;margin:0 auto 4px;box-shadow:0 0 0 3px #fff;">${idx + 1}</div>
+            <span style="font-size:0.72rem;font-weight:600;color:#0d0f1d;max-width:85px;display:inline-block;">${esc(lbl)}</span>
+          </div>
+        `).join("")}
+      </div>
+    `;
+  } else {
+    // Flowchart / Architecture
+    container.innerHTML = `
+      <div style="display:flex;align-items:center;gap:10px;overflow-x:auto;padding:6px 0;">
+        ${labels.map((lbl, idx) => `
+          <div style="background:#ffffff;border:1.5px solid #6f54f7;border-radius:6px;padding:6px 12px;font-size:0.78rem;font-weight:600;color:#0d0f1d;box-shadow:0 2px 8px rgba(111,84,247,0.1);white-space:nowrap;">
+            ${esc(lbl)}
+          </div>
+          ${idx < labels.length - 1 ? `<span style="color:#6f54f7;font-weight:800;font-size:1rem;">→</span>` : ""}
+        `).join("")}
+      </div>
+    `;
+  }
+}
+
 function renderSlides() {
   const slides = Array.isArray(state.course.slides) ? state.course.slides : [];
   $("slideCount").textContent = `${slides.length} ${slides.length === 1 ? "slide" : "slides"}`;
@@ -249,6 +301,11 @@ function renderSlides() {
     ? `Suggested ${slide.visualType}` : "Visual suggestion";
   $("slideVisualDescription").textContent = slide.visualDescription || "No visual description was supplied.";
   $("slideVisualLabels").innerHTML = labels.map((label) => `<li>${esc(label)}</li>`).join("");
+
+  if (hasVisualGuidance) {
+    renderVisualDiagram(slide);
+  }
+
   document.querySelectorAll("[data-slide]").forEach((button) => button.addEventListener("click", () => {
     saveCurrentSlide();
     state.selectedSlide = Number(button.dataset.slide);
@@ -287,12 +344,24 @@ function renderPractice() {
   const quiz = Array.isArray(state.course.quiz) ? state.course.quiz : [];
   $("practiceNavCount").textContent = exercises.length + quiz.length;
   $("exerciseCount").textContent = `${exercises.length} ${exercises.length === 1 ? "exercise" : "exercises"}`;
-  $("exerciseList").innerHTML = exercises.length ? exercises.map((item) => `<article class="exercise"><span class="difficulty">${esc(item.difficulty || "Practice")}</span><h4>${esc(item.title || "Untitled exercise")}</h4><p>${esc(item.description || "No description supplied.")}</p>${item.testHint ? `<p><b>Acceptance hint:</b> ${esc(item.testHint)}</p>` : ""}</article>`).join("") : emptyMarkup("No exercises were returned for this course.");
+  $("exerciseList").innerHTML = exercises.length ? exercises.map((item) => `
+    <article class="exercise">
+      <span class="difficulty">${esc(item.difficulty || "Practice")}</span>
+      <h4>${esc(item.title || "Untitled exercise")}</h4>
+      <p>${esc(item.description || "No description supplied.")}</p>
+      ${item.testHint ? `<p style="margin-top:8px;"><b>Acceptance hint:</b> ${esc(item.testHint)}</p>` : ""}
+    </article>`).join("") : emptyMarkup("No exercises were returned for this course.");
   $("quizCount").textContent = `${quiz.length} ${quiz.length === 1 ? "question" : "questions"}`;
   $("quizList").innerHTML = quiz.length ? quiz.map((item, index) => {
     const options = Array.isArray(item.options) ? item.options : [];
     const answer = Number.isInteger(item.correctIndex) ? options[item.correctIndex] : "Not supplied";
-    return `<article class="quiz-item"><span class="q-num">QUESTION ${String(index + 1).padStart(2, "0")}</span><h4>${esc(item.question || "Question")}</h4><ol type="A">${options.map((option) => `<li>${esc(option)}</li>`).join("")}</ol><div class="answer-key"><b>Answer:</b> ${esc(answer || "Not supplied")}<br>${esc(item.explanation || "")}</div></article>`;
+    return `
+      <article class="quiz-item">
+        <span class="q-num">QUESTION ${String(index + 1).padStart(2, "0")}</span>
+        <h4>${esc(item.question || "Question")}</h4>
+        <ol type="A">${options.map((option) => `<li>${esc(option)}</li>`).join("")}</ol>
+        <div class="answer-key"><b>Instructor Answer:</b> ${esc(answer || "Not supplied")}<br>${esc(item.explanation || "")}</div>
+      </article>`;
   }).join("") : emptyMarkup("No quiz questions were returned for this course.");
 }
 
@@ -300,7 +369,11 @@ function renderCheat() {
   const items = Array.isArray(state.course.cheatSheet) ? state.course.cheatSheet : [];
   $("cheatNavCount").textContent = items.length;
   $("cheatTitle").textContent = state.course.title || "Cheat sheet";
-  $("cheatGrid").innerHTML = items.length ? items.map((item) => `<article class="term"><b>${esc(item.term || "Term")}</b><p>${esc(item.definition || "No definition supplied.")}</p></article>`).join("") : emptyMarkup("No reference terms were returned for this course.");
+  $("cheatGrid").innerHTML = items.length ? items.map((item) => `
+    <article class="term">
+      <b>${esc(item.term || "Term")}</b>
+      <p>${esc(item.definition || "No definition supplied.")}</p>
+    </article>`).join("") : emptyMarkup("No reference terms were returned for this course.");
 }
 
 function renderAll() {
@@ -345,8 +418,19 @@ async function generateCourse(event) {
     button.textContent = "Generating course materials…";
   });
   setNotice("");
+  paperSceneInstance?.triggerPulse();
+
   try {
-    const data = await requestJson("/api/generate", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ topic, level: $("level").value, durationMinutes: Number($("duration").value), language: $("language").value }) });
+    const data = await requestJson("/api/generate", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        topic,
+        level: $("level").value,
+        durationMinutes: Number($("duration").value),
+        language: $("language").value
+      })
+    });
     setCourse(data.course, data.message || "Generated with Gemini AI. Review this draft before using it.");
   } catch (error) {
     setNotice(`${error.message} No course was generated. The fixed sample below is available if you want to explore the workspace.`, "error");
@@ -364,11 +448,15 @@ async function generateCourse(event) {
 async function loadSample() {
   const button = $("loadSampleBtn");
   button.disabled = true;
+  paperSceneInstance?.triggerPulse();
   try {
     const data = await requestJson("/api/sample");
     setCourse(data.course, `${data.message} This fixed sample is not adapted to your topic.`);
-  } catch (error) { setNotice(error.message, "error"); }
-  finally { button.disabled = false; }
+  } catch (error) {
+    setNotice(error.message, "error");
+  } finally {
+    button.disabled = false;
+  }
 }
 
 async function verifyCode() {
@@ -380,11 +468,30 @@ async function verifyCode() {
   button.textContent = "Checking runner…";
   setVerification("NOT VERIFIED", "Checking execution service", "Waiting for a real isolated runner response. This request does not execute code in the Flask app.");
   try {
-    const result = await requestJson("/api/verify", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ language: example.language || state.course.language, code: example.code, expectedOutput: example.expectedOutput || "" }) });
-    const details = [result.runnerDescription, result.details, result.runnerStatus ? `Runner status: ${result.runnerStatus}` : "", result.stdout !== undefined ? `Actual output: ${result.stdout}` : "", result.stderr ? `Error output: ${result.stderr}` : "", result.expectedOutput ? `Expected output: ${result.expectedOutput}` : ""].filter(Boolean).join("\n");
+    const result = await requestJson("/api/verify", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        language: example.language || state.course.language,
+        code: example.code,
+        expectedOutput: example.expectedOutput || ""
+      })
+    });
+    const details = [
+      result.runnerDescription,
+      result.details,
+      result.runnerStatus ? `Runner status: ${result.runnerStatus}` : "",
+      result.stdout !== undefined ? `Actual output: ${result.stdout}` : "",
+      result.stderr ? `Error output: ${result.stderr}` : "",
+      result.expectedOutput ? `Expected output: ${result.expectedOutput}` : ""
+    ].filter(Boolean).join("\n");
     setVerification(result.status, result.message || "Runner response received.", details);
-  } catch (error) { setVerification("NOT VERIFIED", "Verification request failed", `${error.message} The code was not confirmed as passing.`); }
-  finally { button.disabled = false; button.textContent = "▶ Verify with runner"; }
+  } catch (error) {
+    setVerification("NOT VERIFIED", "Verification request failed", `${error.message} The code was not confirmed as passing.`);
+  } finally {
+    button.disabled = false;
+    button.textContent = "▶ Verify with runner";
+  }
 }
 
 async function downloadExport(kind, button) {
@@ -395,10 +502,14 @@ async function downloadExport(kind, button) {
   button.disabled = true;
   button.textContent = `Preparing ${kind.toUpperCase()}…`;
   try {
-    const response = await fetch(kind === "pdf" ? "/api/export/pdf" : "/api/export/pptx", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(state.course) });
+    const response = await fetch(kind === "pdf" ? "/api/export/pdf" : "/api/export/pptx", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(state.course)
+    });
     if (!response.ok) {
       let message = `Export failed (${response.status}).`;
-      try { const data = await response.json(); message = data.error || message; } catch { /* Keep the status message. */ }
+      try { const data = await response.json(); message = data.error || message; } catch { /* Keep status message. */ }
       throw new Error(message);
     }
     const blob = await response.blob();
@@ -411,8 +522,12 @@ async function downloadExport(kind, button) {
     anchor.remove();
     window.setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
     toast(`${kind.toUpperCase()} export downloaded`);
-  } catch (error) { setAlert("workspaceAlert", error.message); toast(error.message); }
-  finally { button.disabled = false; button.textContent = original; }
+  } catch (error) {
+    toast(error.message);
+  } finally {
+    button.disabled = false;
+    button.textContent = original;
+  }
 }
 
 function updateMotionToggle() {
@@ -431,8 +546,13 @@ async function startPaperScene() {
     const sceneModule = await paperSceneModulePromise;
     if (!paperMotionEnabled || paperSceneInstance) return;
     paperSceneInstance = sceneModule.createPaperScene($("paperScene"));
+    // Sync initial form values
+    if (paperSceneInstance) {
+      paperSceneInstance.setLanguage($("language")?.value);
+      paperSceneInstance.setDuration($("duration")?.value);
+      if ($("topic")?.value) paperSceneInstance.setTopic($("topic").value);
+    }
   } catch {
-    // Keep the designed CSS paper composition when WebGL or the pinned module is unavailable.
     const button = $("motionToggle");
     if (button) button.hidden = true;
     $("paperScene").dataset.fallback = "true";
@@ -478,11 +598,45 @@ function initializePaperScene() {
   });
 }
 
+// Hook form inputs to real-time 3D feedback
+$("topic")?.addEventListener("input", (e) => {
+  paperSceneInstance?.setTopic(e.target.value);
+});
+$("language")?.addEventListener("change", (e) => {
+  paperSceneInstance?.setLanguage(e.target.value);
+});
+$("duration")?.addEventListener("change", (e) => {
+  paperSceneInstance?.setDuration(e.target.value);
+});
+
+// Setup quick topic chips
+document.querySelectorAll(".topic-chip").forEach((chip) => {
+  chip.addEventListener("click", () => {
+    const topicInput = $("topic");
+    if (topicInput) {
+      topicInput.value = chip.dataset.topic;
+      topicInput.focus();
+      paperSceneInstance?.setTopic(topicInput.value);
+      toast(`Selected: ${chip.dataset.topic}`);
+    }
+  });
+});
+
 document.querySelectorAll("[data-view]").forEach((button) => button.addEventListener("click", () => showView(button.dataset.view)));
 $("generateForm").addEventListener("submit", generateCourse);
 $("loadSampleBtn").addEventListener("click", loadSample);
-$("saveSlide").addEventListener("click", () => { saveCurrentSlide(); renderSlides(); renderOverview(); renderOutline(); toast("Slide changes saved for this session."); });
-$("codeSelect").addEventListener("change", () => { saveCurrentCode(); state.selectedCode = Number($("codeSelect").value); renderCodes(); });
+$("saveSlide").addEventListener("click", () => {
+  saveCurrentSlide();
+  renderSlides();
+  renderOverview();
+  renderOutline();
+  toast("Slide changes saved for this session.");
+});
+$("codeSelect").addEventListener("change", () => {
+  saveCurrentCode();
+  state.selectedCode = Number($("codeSelect").value);
+  renderCodes();
+});
 $("verifyBtn").addEventListener("click", verifyCode);
 $("exportPptx").addEventListener("click", (event) => downloadExport("pptx", event.currentTarget));
 $("exportPdfTop").addEventListener("click", (event) => downloadExport("pdf", event.currentTarget));
