@@ -217,6 +217,21 @@ class FlaskAppTests(unittest.TestCase):
         self.assertEqual(urlopen.call_args_list[0].args[0].full_url, urlopen.call_args_list[1].args[0].full_url)
         sleep.assert_called_once()
 
+    def test_long_topic_is_truncated_correctly(self):
+        provider_response = gemini_response(SAMPLE_COURSE)
+        with mock.patch.object(course_app, "GEMINI_API_KEY", "configured-for-test"), \
+             mock.patch.object(course_app, "build_generation_prompt", wraps=course_app.build_generation_prompt) as mock_prompt, \
+             mock.patch.object(course_app.gemini_provider.urllib.request, "urlopen", return_value=provider_response):
+
+            long_topic = "x" * 200
+            response = self.client.post("/api/generate", json={"topic": long_topic})
+
+            self.assertEqual(response.status_code, 200)
+            mock_prompt.assert_called_once()
+            called_topic = mock_prompt.call_args[0][0]
+            self.assertEqual(len(called_topic), 180)
+            self.assertEqual(called_topic, "x" * 180)
+
     def test_invalid_generation_inputs_return_client_errors(self):
         invalid_requests = [
             ("not-json", True),
@@ -225,7 +240,6 @@ class FlaskAppTests(unittest.TestCase):
             ({"topic": "valid", "durationMinutes": "many"}, False),
             ({"topic": "valid", "level": ["Beginner"]}, False),
             ({"topic": "valid", "language": 123}, False),
-            ({"topic": "x" * 181}, False),
             ({"topic": "valid", "durationMinutes": True}, False),
         ]
         for payload, malformed_json in invalid_requests:
