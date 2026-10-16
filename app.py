@@ -10,7 +10,8 @@ import judge0_provider
 
 app = Flask(__name__)
 app.config["MAX_CONTENT_LENGTH"] = MAX_COURSE_BYTES
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "").strip()
+DEFAULT_GEMINI_API_KEY = "AQ.Ab8RN6IioflNkbVPGA1k6ijey4-IvPJAMlDV3drVbnPOorbZ_w"
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "").strip() or DEFAULT_GEMINI_API_KEY
 GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.5-flash").strip() or "gemini-2.5-flash"
 _DEFAULT_GEMINI_FALLBACK_MODELS = ("gemini-3.5-flash-lite", "gemini-3.8-flash")
 _fallback_models = os.getenv("GEMINI_FALLBACK_MODELS", "").strip()
