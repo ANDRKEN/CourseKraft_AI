@@ -1,64 +1,248 @@
 <!doctype html>
 <html lang="en">
 <head>
-<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>CourseForge AI — Verified Course Material Studio</title>
-<link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/static/style.css">
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f5f0e8">
+  <meta name="description" content="Create, review, and export thoughtful course materials with CourseKraft AI.">
+  <title>CourseKraft AI — Course authoring studio</title>
+  <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
-<div class="app-shell">
-  <aside class="sidebar">
-    <div class="brand"><div class="brand-icon">C</div><div><b>CourseForge</b><small>AI STUDIO</small></div></div>
-    <div class="workspace-label">WORKSPACE</div>
-    <button class="nav active" data-tab="generate"><span>✦</span> Generate course</button>
-    <button class="nav" data-tab="slides"><span>▤</span> Slides & notes</button>
-    <button class="nav" data-tab="code"><span>⌘</span> Code verification</button>
-    <button class="nav" data-tab="practice"><span>◉</span> Quiz & exercises</button>
-    <button class="nav" data-tab="cheat"><span>▧</span> Cheat sheet</button>
-    <div class="sidebar-bottom"><div class="status-dot"></div><div><b>Local workspace</b><small>Your project stays on this device</small></div></div>
-  </aside>
-  <main class="main">
-    <header class="topbar"><div><div class="eyebrow">VERIFIED COURSE MATERIAL STUDIO</div><h1 id="pageTitle">Create learning material</h1></div><div class="top-actions"><span id="aiStatus" class="pill neutral">Checking integrations…</span><button id="exportPdfTop" class="btn btn-quiet">↓ Export PDF</button></div></header>
-    <section id="generate" class="panel active-panel">
-      <div class="hero"><div><div class="hero-tag"><span class="spark">✦</span> FROM TOPIC TO TEACHING KIT</div><h2>Teach better.<br><em>Prepare in minutes.</em></h2><p>Generate structured teaching materials, review every slide, and verify code examples before you take them to class.</p></div><div class="hero-art"><div class="orb orb1"></div><div class="orb orb2"></div><div class="mini-card"><span class="mini-icon">✓</span><div><b>Quality check</b><small>Verification-aware workflow</small></div></div><div class="floating-lines">✳ &nbsp; ◇ &nbsp; ✦</div></div></div>
-      <div class="content-grid">
-        <div class="card form-card"><div class="card-head"><div><h3>Course setup</h3><p>Tell us what you want to teach.</p></div><span class="step">01 / INPUT</span></div>
-          <form id="generateForm">
-            <label>Topic or lesson title</label><input id="topic" required maxlength="180" value="Object-Oriented Programming in Java" placeholder="e.g. React hooks, DBMS normalization">
-            <div class="two-col"><div><label>Learner level</label><select id="level"><option>Beginner</option><option>Intermediate</option><option>Advanced</option></select></div><div><label>Session duration</label><select id="duration"><option value="30">30 minutes</option><option value="45" selected>45 minutes</option><option value="60">60 minutes</option><option value="90">90 minutes</option></select></div></div>
-            <label>Programming language</label><select id="language"><option>Java</option><option>Python</option><option>JavaScript</option><option>C++</option></select>
-            <div class="hint"><span>✦</span><div><b>One generation, six outputs</b><small>Slides · Notes · Code · Exercises · Quiz · Cheat sheet</small></div></div>
-            <button class="btn btn-primary btn-full" id="generateBtn" type="submit"><span>✦</span> Generate course materials <span class="btn-arrow">↗</span></button>
-            <p class="microcopy">AI generation needs a configured API key. Without one, a clearly labelled sample course loads so you can explore the app.</p>
-          </form>
-        </div>
-        <div class="card output-card"><div class="card-head"><div><h3>Your learning kit</h3><p>Everything for a complete teaching session.</p></div><span class="pill purple">6 deliverables</span></div>
-          <div class="deliverables"><div class="deliverable"><div class="d-icon lavender">▤</div><div><b>Presentation slides</b><small>Structured, classroom-ready</small></div><span>01</span></div><div class="deliverable"><div class="d-icon blue">✎</div><div><b>Trainer notes</b><small>Speaking points per slide</small></div><span>02</span></div><div class="deliverable"><div class="d-icon green">{ }</div><div><b>Runnable code</b><small>Examples with test expectations</small></div><span>03</span></div><div class="deliverable"><div class="d-icon amber">⌁</div><div><b>Practical exercises</b><small>Hands-on learning tasks</small></div><span>04</span></div><div class="deliverable"><div class="d-icon pink">◉</div><div><b>Knowledge quiz</b><small>Answers and explanations</small></div><span>05</span></div><div class="deliverable"><div class="d-icon slate">▧</div><div><b>Cheat sheet</b><small>Fast revision reference</small></div><span>06</span></div></div>
-          <div class="trust-note"><span>✓</span><div><b>Verification you can trust</b><small>We only report a code test as passed when a configured runner actually executes it.</small></div></div>
-        </div>
+  <a class="skip-link" href="#mainContent">Skip to course workspace</a>
+  <div class="app-shell">
+    <aside class="sidebar" aria-label="Course workspace">
+      <div class="brand">
+        <div class="brand-icon" aria-hidden="true"><span></span><span></span><span></span></div>
+        <div><b>CourseKraft</b><small>AI STUDIO</small></div>
       </div>
-    </section>
-    <section id="slides" class="panel">
-      <div class="section-intro"><div><div class="eyebrow">COURSE WORKSPACE</div><h2>Slides & trainer notes</h2><p>Edit content before exporting your lesson.</p></div><button class="btn btn-primary" id="exportPptx">↓ Export PPTX</button></div>
-      <div class="editor-layout"><div class="card slide-list-card"><div class="card-head"><h3>Slides</h3><span id="slideCount" class="pill neutral">0 slides</span></div><div id="slideList"></div></div><div class="card slide-editor"><div class="editor-top"><span id="slideNumber" class="pill purple">SLIDE 01</span><span class="microcopy">Edits save in this session</span></div><label>Slide title</label><input id="slideTitle"><label>Bullet points <small>(one per line)</small></label><textarea id="slideBullets" rows="7"></textarea><label>Trainer notes</label><textarea id="slideNotes" rows="4"></textarea><button id="saveSlide" class="btn btn-primary">Save slide changes</button></div></div>
-    </section>
-    <section id="code" class="panel">
-      <div class="section-intro"><div><div class="eyebrow">QUALITY ASSURANCE</div><h2>Code verification</h2><p>Run code in a configured isolated runner and inspect actual results.</p></div></div>
-      <div class="card code-card"><div class="card-head"><div><h3>Code example</h3><p>Choose an example from your generated course.</p></div><select id="codeSelect" class="compact-select"></select></div><div class="code-meta"><span id="codeLang" class="pill neutral">JAVA</span><span class="microcopy">Untrusted code is not executed by this app's Flask process.</span></div><label>Source code</label><textarea id="codeEditor" class="code-editor" rows="13" spellcheck="false"></textarea><label>Expected standard output <small>(optional; exact trimmed match)</small></label><input id="expectedOutput" placeholder="Expected output, if applicable"><button id="verifyBtn" class="btn btn-primary">▶ Run verification</button><div id="verifyResult" class="verify-result neutral-result"><div class="result-mark">?</div><div><b>Not verified yet</b><p>Run verification to see the current status. If no runner is configured, the result stays NOT VERIFIED.</p></div></div></div>
-    </section>
-    <section id="practice" class="panel">
-      <div class="section-intro"><div><div class="eyebrow">CHECK UNDERSTANDING</div><h2>Quiz & exercises</h2><p>Review questions, answer keys and hands-on practice.</p></div></div>
-      <div class="card"><div class="card-head"><div><h3>Knowledge quiz</h3><p>Instructor review mode — correct answers are visible.</p></div><span id="quizCount" class="pill purple">0 questions</span></div><div id="quizList" class="quiz-list"></div></div>
-      <div class="card exercises-card"><div class="card-head"><div><h3>Practical exercises</h3><p>Tasks learners can attempt after the lesson.</p></div></div><div id="exerciseList" class="exercise-grid"></div></div>
-    </section>
-    <section id="cheat" class="panel">
-      <div class="section-intro"><div><div class="eyebrow">QUICK REFERENCE</div><h2>Cheat sheet</h2><p>Key terms to recap before leaving the classroom.</p></div><button id="exportPdfCheat" class="btn btn-primary">↓ Export full PDF</button></div>
-      <div class="card"><div class="card-head"><div><h3 id="cheatTitle">Course reference</h3><p>Core concepts at a glance.</p></div><span class="pill neutral">REVISION</span></div><div id="cheatGrid" class="cheat-grid"></div></div>
-    </section>
-    <footer><span>CourseForge AI <span class="footer-dot">•</span> Hackathon MVP</span><span>Built for teaching materials you can inspect and verify.</span></footer>
-  </main>
-</div>
-<div id="toast" class="toast"></div>
-<script src="/static/app.js"></script>
-</body></html>
+
+      <div class="workspace-label">YOUR STUDIO</div>
+      <button class="nav active" type="button" data-view="create"><span aria-hidden="true">＋</span> New course</button>
+
+      <div id="courseNavigation" class="course-navigation" hidden>
+        <div class="workspace-label course-nav-label">OPEN SESSION</div>
+        <div class="course-identity">
+          <b id="sidebarCourseTitle">Course title</b>
+          <small id="sidebarCourseMeta"></small>
+        </div>
+        <button class="nav" type="button" data-view="overview"><span aria-hidden="true">⌂</span> Overview</button>
+        <button class="nav" type="button" data-view="slides"><span aria-hidden="true">▤</span> Slides & notes <span class="nav-count" id="slideNavCount"></span></button>
+        <button class="nav" type="button" data-view="code"><span aria-hidden="true">⌘</span> Code & checks <span class="nav-count" id="codeNavCount"></span></button>
+        <button class="nav" type="button" data-view="practice"><span aria-hidden="true">◉</span> Exercises & quiz <span class="nav-count" id="practiceNavCount"></span></button>
+        <button class="nav" type="button" data-view="cheat"><span aria-hidden="true">▧</span> Cheat sheet <span class="nav-count" id="cheatNavCount"></span></button>
+        <div class="outline-heading">SLIDE OUTLINE</div>
+        <div id="courseOutline" class="course-outline" aria-label="Course slide outline"></div>
+      </div>
+
+      <div class="sidebar-bottom">
+        <div class="status-dot" aria-hidden="true"></div>
+        <div><b>Local workspace</b><small>Edits stay in this session</small></div>
+      </div>
+    </aside>
+
+    <main class="main" id="mainContent">
+      <header class="topbar">
+        <div class="page-heading">
+          <div class="eyebrow">COURSEKRAFT AI <span class="eyebrow-divider">/</span> STUDIO</div>
+          <h1 id="pageTitle">Create a course</h1>
+          <p id="pageDescription">Shape a focused teaching session, then review every material before sharing it.</p>
+        </div>
+        <div class="top-actions">
+          <span id="aiStatus" hidden aria-hidden="true">Checking AI availability</span>
+          <span id="courseState" class="course-state" hidden></span>
+          <button class="btn btn-primary creation-action" id="generateBtn" form="generateForm" type="submit">
+            <span aria-hidden="true">✳</span> Create teaching draft <span class="btn-arrow" aria-hidden="true">↗</span>
+          </button>
+          <div id="workspaceExports" class="workspace-exports" hidden>
+            <button id="exportPdfTop" class="btn btn-quiet" type="button">↓ Export PDF</button>
+            <button id="exportPptx" class="btn btn-primary" type="button">↓ Export PPTX</button>
+          </div>
+        </div>
+      </header>
+
+      <section id="create" class="panel active-panel" aria-labelledby="createTitle">
+        <div class="create-intro">
+          <div class="create-copy">
+            <div class="eyebrow eyebrow-light">A STUDIO FOR SHAPING KNOWLEDGE</div>
+            <h2 id="createTitle">What should your learners <em>understand</em> or make?</h2>
+            <p>Start with the idea. We’ll help you shape it into a clear teaching session you can review and refine.</p>
+            <div class="hero-caption"><span class="caption-rule"></span><span>FROM FIRST PRINCIPLE TO TEACHING PLAN</span></div>
+          </div>
+          <div class="paper-scene" id="paperScene" data-paper-scene aria-label="Layered paper forms suggest a course taking shape">
+            <div class="paper-poster" aria-hidden="true">
+              <span class="poster-sheet poster-sheet-back"></span>
+              <span class="poster-sheet poster-sheet-mid"></span>
+              <span class="poster-sheet poster-sheet-front"><i></i><i></i><i></i><i></i><b></b></span>
+              <span class="poster-ribbon"></span>
+              <span class="poster-orbit"></span>
+            </div>
+            <canvas class="paper-canvas" aria-hidden="true"></canvas>
+            <div class="scene-caption"><span class="scene-caption-mark" aria-hidden="true">✳</span><span>IDEAS, GIVEN FORM</span></div>
+            <button class="motion-toggle" id="motionToggle" type="button" aria-pressed="false" aria-label="Turn motion off" title="Turn motion off"><span class="motion-indicator" aria-hidden="true"></span><span>Motion on</span></button>
+          </div>
+        </div>
+
+        <div id="providerNotice" class="provider-notice" role="status" aria-live="polite" hidden></div>
+
+        <div class="create-layout">
+          <div class="card form-card">
+            <div class="card-head">
+              <div><span class="form-index">01</span><h2>Set the intention</h2><p>A few details give the lesson its shape.</p></div>
+              <span class="step">COURSE BRIEF</span>
+            </div>
+            <form id="generateForm">
+              <label for="topic">What are we learning?</label>
+              <input id="topic" name="topic" required maxlength="180" autocomplete="off" aria-describedby="topicHint" placeholder="e.g. How React hooks make stateful UI possible">
+              <span class="field-hint" id="topicHint">A topic, question, or skill to build.</span>
+
+              <div class="two-col">
+                <div>
+                  <label for="level">Learner level</label>
+                  <select id="level" name="level">
+                    <option>Beginner</option>
+                    <option>Intermediate</option>
+                    <option>Advanced</option>
+                  </select>
+                </div>
+                <div>
+                  <label for="duration">Session length</label>
+                  <select id="duration" name="durationMinutes">
+                    <option value="30">30 minutes</option>
+                    <option value="45" selected>45 minutes</option>
+                    <option value="60">60 minutes</option>
+                    <option value="90">90 minutes</option>
+                  </select>
+                </div>
+              </div>
+
+              <label for="language">Programming language <span class="label-optional">when relevant</span></label>
+              <select id="language" name="language">
+                <option>Java</option>
+                <option>Python</option>
+                <option>JavaScript</option>
+                <option>C++</option>
+              </select>
+
+              <div class="material-preview" aria-label="Materials included">
+                <span class="preview-label">THE TEACHING PACK</span>
+                <p><span>Slides & notes</span><i aria-hidden="true">/</i><span>Examples</span><i aria-hidden="true">/</i><span>Practice</span><i aria-hidden="true">/</i><span>Quick reference</span></p>
+              </div>
+
+              <button class="btn btn-primary btn-full form-generate" id="generateFormBtn" type="submit">
+                <span aria-hidden="true">✳</span> Generate course materials <span class="btn-arrow" aria-hidden="true">↗</span>
+              </button>
+              <p class="microcopy">AI material is a draft for instructor review. Edit slides and notes before exporting.</p>
+            </form>
+          </div>
+
+          <aside class="sample-card" aria-labelledby="sampleTitle">
+            <div class="sample-card-top"><span class="sample-kicker">START EXPLORING</span><span class="sample-index" aria-hidden="true">02</span></div>
+            <h2 id="sampleTitle">Take a look inside.</h2>
+            <p>The sample is a fixed Java and object-oriented programming course. It is not rewritten to match your topic.</p>
+            <div class="sample-preview" aria-hidden="true">
+              <div class="sample-page"><small>LESSON 01</small><b>Objects<br>in motion</b><span class="sample-page-lines"></span></div>
+              <div class="sample-preview-note"><span>JAVA</span><b>Class → object</b><small>5 slides · examples · practice</small></div>
+            </div>
+            <button id="loadSampleBtn" class="btn btn-quiet sample-action" type="button">Explore the fixed sample <span aria-hidden="true">↗</span></button>
+            <p class="microcopy">A ready-made course. No AI call is made when you open the sample.</p>
+          </aside>
+        </div>
+      </section>
+
+      <section id="overview" class="panel" aria-labelledby="overviewTitle">
+        <div id="workspaceAlert" class="alert alert-warning" role="alert" hidden></div>
+        <div id="courseSourceNotice" class="source-notice" role="status" aria-live="polite"></div>
+        <div class="overview-heading">
+          <div>
+            <div class="eyebrow">COURSE OVERVIEW</div>
+            <h2 id="overviewTitle"></h2>
+            <p id="overviewMeta" class="overview-meta"></p>
+          </div>
+          <button class="btn btn-primary" type="button" data-view="slides">Review slides <span aria-hidden="true">→</span></button>
+        </div>
+
+        <div class="overview-grid">
+          <section class="card overview-objectives">
+            <div class="card-head"><div><h3>Learning objectives</h3><p>What learners should be able to do.</p></div></div>
+            <ul id="overviewObjectives" class="objective-list"></ul>
+          </section>
+          <section class="card overview-materials">
+            <div class="card-head"><div><h3>Materials in this course</h3><p>Content returned for this session.</p></div></div>
+            <div id="overviewCounts" class="overview-counts"></div>
+          </section>
+        </div>
+
+        <section class="card overview-preview">
+          <div class="card-head"><div><h3>Inside the lesson</h3><p>A quick look at the actual slide sequence.</p></div><button class="text-button" type="button" data-view="slides">Open slides →</button></div>
+          <div id="overviewSlidePreview" class="overview-slide-preview"></div>
+        </section>
+      </section>
+
+      <section id="slides" class="panel" aria-labelledby="slidesTitle">
+        <div class="section-intro">
+          <div><div class="eyebrow">TEACHING FLOW</div><h2 id="slidesTitle">Slides & trainer notes</h2><p>Edit a slide, then move through the outline. Changes stay in this session.</p></div>
+        </div>
+        <div class="editor-layout">
+          <div class="card slide-list-card">
+            <div class="card-head"><div><h3>Lesson sequence</h3><p id="slideCount">0 slides</p></div></div>
+            <div id="slideList" class="slide-list"></div>
+          </div>
+          <div class="card slide-editor">
+            <div id="slideEmpty" class="empty-state" hidden>No slides were returned for this course.</div>
+            <div id="slideEditFields" hidden>
+              <div class="editor-top"><span id="slideNumber" class="pill purple">SLIDE 01</span><span class="microcopy">Session edits</span></div>
+              <label for="slideTitle">Slide title</label><input id="slideTitle">
+              <label for="slideBullets">Key points <small>(one per line)</small></label><textarea id="slideBullets" rows="7"></textarea>
+              <label for="slideNotes">Trainer notes</label><textarea id="slideNotes" rows="5"></textarea>
+              <section id="slideVisualPreview" class="slide-visual-preview" aria-labelledby="slideVisualHeading" hidden>
+                <div class="editor-top"><h3 id="slideVisualHeading">Visual guidance</h3><span id="slideVisualType" class="pill neutral"></span></div>
+                <p id="slideVisualDescription"></p>
+                <ul id="slideVisualLabels" class="visual-label-list"></ul>
+              </section>
+              <button id="saveSlide" class="btn btn-primary" type="button">Save slide changes</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section id="code" class="panel" aria-labelledby="codeTitle">
+        <div class="section-intro"><div><div class="eyebrow">EXECUTION CHECK</div><h2 id="codeTitle">Code examples</h2><p>Runner execution checks code behavior, not the factual accuracy of the lesson.</p></div></div>
+        <div class="card code-card">
+          <div id="codeEmpty" class="empty-state" hidden>No code examples were included in this course.</div>
+          <div id="codeContent" hidden>
+            <div class="card-head"><div><h3>Example to inspect</h3><p>Select an example returned with this course.</p></div><label class="visually-hidden" for="codeSelect">Code example</label><select id="codeSelect" class="compact-select"></select></div>
+            <div class="code-meta"><span id="codeLang" class="pill neutral">JAVA</span><span id="runnerStatus" class="pill neutral">Checking runner</span></div>
+            <p id="codeTestDescription" class="code-test-description" hidden></p>
+            <label for="codeEditor">Source code</label><textarea id="codeEditor" class="code-editor" rows="13" spellcheck="false"></textarea>
+            <label for="expectedOutput">Expected output <small>(optional)</small></label><input id="expectedOutput" placeholder="Enter expected standard output when known">
+            <div class="verification-actions"><button id="verifyBtn" class="btn btn-primary" type="button">▶ Verify with runner</button><p class="microcopy">Submitted code is sent to the configured isolated runner. It is never run in the Flask process.</p></div>
+            <div id="verifyResult" class="verify-result neutral-result" role="status" aria-live="polite"><div class="result-mark" aria-hidden="true">?</div><div><b>Not verified</b><p>Run a check to see whether a runner is available and what it reports.</p></div></div>
+          </div>
+        </div>
+      </section>
+
+      <section id="practice" class="panel" aria-labelledby="practiceTitle">
+        <div class="section-intro"><div><div class="eyebrow">LEARNER PRACTICE</div><h2 id="practiceTitle">Exercises & quiz</h2><p>Review the practice material included with this course.</p></div></div>
+        <section class="card">
+          <div class="card-head"><div><h3>Exercises</h3><p>Activities and acceptance hints for the lesson.</p></div><span id="exerciseCount" class="pill neutral">0</span></div>
+          <div id="exerciseList" class="exercise-grid"></div>
+        </section>
+        <section class="card">
+          <div class="card-head"><div><h3>Knowledge check</h3><p>Instructor review mode — answers and explanations are visible.</p></div><span id="quizCount" class="pill neutral">0 questions</span></div>
+          <div id="quizList" class="quiz-list"></div>
+        </section>
+      </section>
+
+      <section id="cheat" class="panel" aria-labelledby="cheatTitle">
+        <div class="section-intro"><div><div class="eyebrow">QUICK REFERENCE</div><h2 id="cheatTitle">Cheat sheet</h2><p>Terms and definitions returned for this course.</p></div></div>
+        <section class="card"><div id="cheatGrid" class="cheat-grid"></div></section>
+      </section>
+
+      <footer><span>CourseKraft AI <span class="footer-dot">•</span> Course materials for instructor review</span><span>Course state is held for this browser session.</span></footer>
+    </main>
+  </div>
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+  <script src="/static/app.js"></script>
+</body>
+</html>

@@ -1,11 +1,12 @@
-# CourseForge AI — Local Hackathon MVP
+# CourseKraft AI — Local Course Studio
 
 A local-first MVP for the PS5 Verified Course Material Studio. It creates teaching materials, previews slides/notes/quizzes/exercises/cheat sheets, exports PPTX/PDF, and reports code verification honestly.
 
 ## Features
 - Topic, learner level, duration and language form
-- Optional Gemini API generation using `GEMINI_API_KEY`
-- Clearly labelled sample fallback when no API is configured or generation fails
+- Optional topic-specific Gemini generation using `GEMINI_API_KEY`
+- Bounded retries and configurable model fallback through `GEMINI_FALLBACK_MODELS`
+- Fixed Java/OOP sample loads separately and never substitutes for a failed AI request
 - Slide preview and in-browser editing
 - Quiz, exercises and cheat sheet views
 - PPTX and PDF export
@@ -14,7 +15,7 @@ A local-first MVP for the PS5 Verified Course Material Studio. It creates teachi
 
 ## Windows quick start
 1. Install Python 3.10+ from https://www.python.org/downloads/ (enable "Add Python to PATH").
-2. Extract the ZIP to a folder.
+2. Open the CourseKraft AI project folder.
 3. Double-click `run_windows.bat`, or run the commands below in PowerShell.
 4. Open http://127.0.0.1:5000.
 
@@ -31,10 +32,10 @@ python app.py
 1. Create a key at https://aistudio.google.com/.
 2. Open `.env` in a text editor and set `GEMINI_API_KEY=your_key_here`.
 3. Restart the app. Keep `.env` private and never upload it to GitHub.
-4. Free-tier access, model availability and quotas can change; check Google AI Studio.
+4. `GEMINI_FALLBACK_MODELS` accepts a comma-separated list of model IDs. Connectivity is checked only when you request generation; a configured key does not mean the provider has been reached.
 
 ## Enable real code verification (optional)
-Configure `JUDGE0_URL` to a trusted Judge0-compatible service and `JUDGE0_API_KEY` if required. The app supports language IDs for Java, Python 3, JavaScript and C++. Test service availability before the hackathon. Hosted Judge0 providers may require provider-specific headers or settings; adjust `verify()` if necessary.
+Configure `JUDGE0_URL` to a trusted Judge0-compatible service. RapidAPI hosts receive their documented key and host headers. For other services, set `JUDGE0_API_KEY_HEADER` to the authentication header the provider documents. If the runner uses different language IDs or supports only a subset, set `JUDGE0_LANGUAGE_IDS` to a JSON object such as `{"python":71,"java":62}`. Without a runner, or when a language is not configured, code remains **NOT VERIFIED**.
 
 **Security:** do not expose the local app to the public internet. Do not run untrusted code directly on your computer. Code verification is delegated to the configured execution service. Without one, the result is **NOT VERIFIED**.
 
@@ -49,7 +50,8 @@ Deploy the Flask app to a Python-capable host. Configure secrets as environment 
 5. QA/demo/presentation
 
 ## Current MVP limits
-- The sample fallback is demo content, not a live AI result.
+- The fixed sample is demo content, not a live AI result, and is loaded only through the sample action.
+- Generated code and expected output are model-provided examples, not verified execution results.
 - Quiz answers are displayed for instructor review; this MVP is not a student exam platform.
 - Code runner integration depends on a configured, reachable Judge0-compatible service.
 - PDF/PPTX exports are generated locally by the Flask server.
