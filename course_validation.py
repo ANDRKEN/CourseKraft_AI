@@ -33,8 +33,7 @@ def validate_generation_request(data):
     topic = topic.strip()
     if not topic:
         return None, "Please enter a topic."
-    if len(topic) > _TOP_LEVEL_TEXT["topic"]:
-        return None, "Topic must be 180 characters or fewer."
+    topic = topic[:_TOP_LEVEL_TEXT["topic"]]
 
     level = data.get("level", "Beginner")
     if not isinstance(level, str):
