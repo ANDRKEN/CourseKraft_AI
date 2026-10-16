@@ -1,3 +1,4 @@
+import asyncio
 """Secret-safe, bounded HTTP adapter for Gemini course generation."""
 
 import json
@@ -64,7 +65,7 @@ def _extract_candidate_text(response_body):
     return text.strip()
 
 
-def generate_content_text(
+async def generate_content_text(
     api_key,
     model,
     prompt,
@@ -128,8 +129,10 @@ def generate_content_text(
                 method="POST",
             )
             try:
-                with urllib.request.urlopen(request, timeout=min(request_timeout, remaining)) as response:
-                    response_body = response.read(MAX_RESPONSE_BYTES + 1)
+                def _do_request():
+                    with urllib.request.urlopen(request, timeout=min(request_timeout, remaining)) as response:
+                        return response.read(MAX_RESPONSE_BYTES + 1)
+                response_body = await asyncio.to_thread(_do_request)
                 if len(response_body) > MAX_RESPONSE_BYTES:
                     raise GeminiProviderError("Gemini returned a response that is too large. Try a shorter topic.")
                 return _extract_candidate_text(response_body)
@@ -146,14 +149,14 @@ def generate_content_text(
                 if error.code in RETRYABLE_STATUS_CODES and attempt == 0:
                     delay = min(_retry_delay(error.headers, attempt), max(0, deadline - time.monotonic()))
                     if delay > 0:
-                        time.sleep(delay)
+                        await asyncio.sleep(delay)
                         continue
                 if error.code in RETRYABLE_STATUS_CODES and model_index < len(models) - 1:
                     break
                 raise GeminiProviderError(_request_error_message(error.code)) from None
             except (socket.timeout, TimeoutError, urllib.error.URLError):
                 if attempt == 0 and deadline - time.monotonic() > 0.5:
-                    time.sleep(min(0.25, max(0, deadline - time.monotonic())))
+                    await asyncio.sleep(min(0.25, max(0, deadline - time.monotonic())))
                     continue
                 if model_index < len(models) - 1:
                     break

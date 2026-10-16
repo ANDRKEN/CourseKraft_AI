@@ -1,3 +1,4 @@
+import asyncio
 """Small, isolated HTTP client for a configured Judge0-compatible runner."""
 
 import ipaddress
@@ -98,7 +99,7 @@ def _not_verified(message, *, details="", runner_description="Configured Judge0-
     return result
 
 
-def verify_code(base_url, language, code, expected_output="", *, api_key="",
+async def verify_code(base_url, language, code, expected_output="", *, api_key="",
                 api_key_header="", language_ids=None):
     """Submit code only to the configured external isolated runner.
 
@@ -143,8 +144,10 @@ def verify_code(base_url, language, code, expected_output="", *, api_key="",
         method="POST",
     )
     try:
-        with urllib.request.urlopen(request, timeout=REQUEST_TIMEOUT_SECONDS) as response:
-            response_body = response.read(MAX_RESPONSE_BYTES + 1)
+        def _do_request():
+            with urllib.request.urlopen(request, timeout=REQUEST_TIMEOUT_SECONDS) as response:
+                return response.read(MAX_RESPONSE_BYTES + 1)
+        response_body = await asyncio.to_thread(_do_request)
         if len(response_body) > MAX_RESPONSE_BYTES:
             return _not_verified("Runner returned a response that is too large to inspect.", runner_description=runner_description)
         result = json.loads(response_body.decode("utf-8"))
