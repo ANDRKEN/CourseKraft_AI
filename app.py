@@ -1,4 +1,4 @@
-import os, json, urllib.request, urllib.error, tempfile, time
+import os, json, re, urllib.request, urllib.error, tempfile, time
 from flask import Flask, render_template, request, jsonify, send_file
 from dotenv import load_dotenv
 load_dotenv()
@@ -7,7 +7,7 @@ from datetime import datetime
 
 app = Flask(__name__)
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "").strip()
-GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
+GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-3.8-flash")
 JUDGE0_URL = os.getenv("JUDGE0_URL", "").strip().rstrip("/")
 JUDGE0_API_KEY = os.getenv("JUDGE0_API_KEY", "").strip()
 
@@ -50,83 +50,196 @@ SAMPLE_COURSE = {
     ]
 }
 
+
 def call_gemini(prompt):
     if not GEMINI_API_KEY:
-        return None, "No GEMINI_API_KEY configured; loaded clearly labelled sample course."
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/{GEMINI_MODEL}:generateContent?key={GEMINI_API_KEY}"
-    body = {"contents":[{"parts":[{"text":prompt}]}],
-            "generationConfig":{"temperature":0.4,"responseMimeType":"application/json"}}
-    req = urllib.request.Request(url, data=json.dumps(body).encode(), headers={"Content-Type":"application/json"}, method="POST")
-    try:
-        with urllib.request.urlopen(req, timeout=60) as resp:
-            data = json.loads(resp.read().decode())
-        text = data["candidates"][0]["content"]["parts"][0]["text"]
-        # tolerate markdown fences
-        text = text.strip()
-        if text.startswith("```"):
-            text = text.split("\n",1)[1].rsplit("```",1)[0].strip()
-        parsed = json.loads(text)
-        required = ["title","slides","codeExamples","exercises","quiz","cheatSheet"]
-        if not all(k in parsed for k in required):
-            raise ValueError("AI response is missing required course fields")
-        parsed.setdefault("topic", parsed["title"])
-        parsed.setdefault("level", "Beginner")
-        parsed.setdefault("durationMinutes", 45)
-        parsed.setdefault("language", "Java")
-        parsed.setdefault("objectives", [])
-        return parsed, "Generated with Gemini API."
-    except Exception as e:
-        return None, f"AI generation failed: {str(e)[:240]}"
+        return None, "No GEMINI_API_KEY configured."
+
+    body = {
+        "contents": [{"parts": [{"text": prompt}]}],
+        "generationConfig": {
+            "temperature": 0.4,
+            "responseMimeType": "application/json",
+            "maxOutputTokens": 6000
+        }
+    }
+
+    # A 503 can persist for one model while another supported Gemini model is
+    # healthy. Try the configured model first, then stable fallbacks. Users can
+    # override the fallback order with GEMINI_FALLBACK_MODELS in .env.
+    configured_fallbacks = os.getenv("GEMINI_FALLBACK_MODELS", "")
+    fallbacks = [m.strip() for m in configured_fallbacks.split(",") if m.strip()]
+    if not fallbacks:
+        fallbacks = ["gemini-3.5-flash-lite", "gemini-3.8-flash"]
+    models = list(dict.fromkeys([GEMINI_MODEL] + fallbacks))
+    retryable_statuses = {408, 429, 500, 502, 503, 504}
+    failover_statuses = {500, 502, 503, 504}
+    last_error = "Gemini API could not generate a response."
+
+    for model_index, model in enumerate(models):
+        max_attempts = 3 if model_index == 0 else 2
+        url = ("https://generativelanguage.googleapis.com/v1beta/"
+               f"models/{model}:generateContent?key={GEMINI_API_KEY}")
+        for attempt in range(max_attempts):
+            req = urllib.request.Request(
+                url,
+                data=json.dumps(body).encode("utf-8"),
+                headers={"Content-Type": "application/json"},
+                method="POST"
+            )
+            try:
+                with urllib.request.urlopen(req, timeout=45) as resp:
+                    data = json.loads(resp.read().decode("utf-8"))
+
+                text = data["candidates"][0]["content"]["parts"][0]["text"].strip()
+                if text.startswith("```"):
+                    text = text.split("\n", 1)[1].rsplit("```", 1)[0].strip()
+                parsed = json.loads(text)
+
+                required = ["title", "slides", "codeExamples", "exercises", "quiz", "cheatSheet"]
+                if not all(key in parsed for key in required):
+                    raise ValueError("AI response is missing required course fields.")
+
+                parsed.setdefault("topic", parsed["title"])
+                parsed.setdefault("level", "Beginner")
+                parsed.setdefault("durationMinutes", 45)
+                parsed.setdefault("language", "Java")
+                parsed.setdefault("objectives", [])
+                if model_index:
+                    return parsed, f"Generated with Gemini fallback model {model}; {GEMINI_MODEL} was temporarily unavailable."
+                return parsed, f"Generated with Gemini API ({model})."
+
+            except urllib.error.HTTPError as e:
+                details = e.read().decode("utf-8", errors="replace")
+                last_error = f"Gemini API HTTP {e.code} on {model}: {details[:500]}"
+                if e.code == 429:
+                    try:
+                        error_data = json.loads(details).get("error", {})
+                    except (ValueError, AttributeError):
+                        error_data = {}
+                    provider_message = str(error_data.get("message", ""))
+                    quota_error = (
+                        "quota" in provider_message.lower()
+                        or "generate_content_free_tier" in details.lower()
+                        or "quota_exceeded" in str(error_data.get("status", "")).lower()
+                    )
+                    if quota_error:
+                        # Quotas are model-specific. Try the configured fallback
+                        # models once, without sleeping or retrying this quota.
+                        last_error = f"Gemini quota exhausted on {model}."
+                        if model_index < len(models) - 1:
+                            break
+                        limit = re.search(r"limit:\s*(\d+)", provider_message, re.IGNORECASE)
+                        retry = re.search(r"retry in\s+([0-9a-z.]+)", provider_message, re.IGNORECASE)
+                        limit_text = f" (limit {limit.group(1)})" if limit else ""
+                        retry_text = f" Try again in about {retry.group(1).rstrip('.')}." if retry else " Wait for the quota reset shown in Google AI Studio."
+                        return None, (f"Gemini's quota for {model}{limit_text} is exhausted.{retry_text} "
+                                      "See your project's usage and limits at https://ai.dev/rate-limit.")
+                # A 503 explicitly means this model is overloaded. Repeating
+                # the same request only adds delay, so switch models at once.
+                if e.code == 503 and model_index < len(models) - 1:
+                    break
+                if e.code in retryable_statuses and attempt < max_attempts - 1:
+                    retry_after = e.headers.get("Retry-After", "")
+                    try:
+                        delay = min(8.0, max(0.5, float(retry_after))) if retry_after else 2 ** attempt
+                    except ValueError:
+                        delay = 2 ** attempt
+                    time.sleep(delay)
+                    continue
+                if (e.code in failover_statuses or (model_index > 0 and e.code == 404)) and model_index < len(models) - 1:
+                    break
+                return None, f"{last_error} Tried {model_index + 1} model(s); please retry shortly."
+            except (TimeoutError, urllib.error.URLError) as e:
+                if attempt < max_attempts - 1:
+                    time.sleep(2 ** attempt)
+                    continue
+                return None, f"Gemini connection error after {max_attempts} attempts: {str(e)[:400]}"
+            except Exception as e:
+                return None, f"Gemini API error: {str(e)[:400]}"
+
+    return None, f"{last_error} All configured Gemini models are temporarily unavailable."
+
+
 
 @app.route("/")
 def index():
     return render_template("index.html")
 
+
 @app.route("/api/status")
 def status():
-    return jsonify({"geminiConfigured": bool(GEMINI_API_KEY), "judge0Configured": bool(JUDGE0_URL),
-                    "model": GEMINI_MODEL, "message":"API keys are read from local environment variables."})
+    return jsonify({
+        "geminiConfigured": bool(GEMINI_API_KEY),
+        "judge0Configured": bool(JUDGE0_URL),
+        "model": GEMINI_MODEL,
+        "message": "API keys are read from local environment variables."
+    })
+
+
+@app.route("/api/sample")
+def sample():
+    """Return the built-in demo course without calling Gemini."""
+    course = {**SAMPLE_COURSE, "_source": "Sample course"}
+    return jsonify({"course": course, "message": "Loaded the built-in sample course.",
+                    "source": "Sample course"})
+
 
 @app.route("/api/generate", methods=["POST"])
 def generate():
-    data = request.get_json(force=True)
-    topic = str(data.get("topic","")).strip()[:180]
-    level = str(data.get("level","Beginner"))[:50]
-    duration = max(10, min(240, int(data.get("durationMinutes",45))))
-    language = str(data.get("language","Java"))[:40]
+    data = request.get_json(silent=True) or {}
+    topic = str(data.get("topic", "")).strip()[:180]
+    level = str(data.get("level", "Beginner")).strip()[:50]
+    language = str(data.get("language", "Java")).strip()[:40]
+    try:
+        duration = max(10, min(240, int(data.get("durationMinutes", 45))))
+    except (TypeError, ValueError):
+        duration = 45
+
     if not topic:
-        return jsonify({"error":"Please enter a topic."}), 400
+        return jsonify({"error": "Enter a topic before generating a course."}), 400
+    if not GEMINI_API_KEY:
+        return jsonify({
+            "error": "Gemini API key is not configured. Add GEMINI_API_KEY to your .env file and restart the app."
+        }), 503
+
     prompt = f"""
-Create complete teaching material as JSON only for a course studio.
+You are CourseKraft AI, an expert instructional designer and subject-matter tutor.
+Create a genuinely topic-specific teaching package. Do not reuse generic sample material.
 Topic: {topic}
-Learner level: {level}
-Session duration: {duration} minutes
-Preferred programming language: {language}
-Return exactly this JSON shape:
-{{
-"title": string, "topic": string, "level": string, "durationMinutes": number, "language": string,
-"objectives": [string],
-"slides": [{{"title": string, "bullets": [string], "speakerNotes": string}}],
-"codeExamples": [{{"id": string, "title": string, "language": "java"|"python"|"javascript"|"cpp", "code": string, "testDescription": string, "expectedOutput": string}}],
-"exercises": [{{"title": string, "description": string, "difficulty": "Easy"|"Medium"|"Hard", "testHint": string}}],
-"quiz": [{{"question": string, "options": [four strings], "correctIndex": integer 0-3, "explanation": string}}],
-"cheatSheet": [{{"term": string, "definition": string}}]
-}}
-Create a complete, genuinely useful teaching pack, not a short outline.
-Create 10-12 slides in a logical teaching sequence: title/context, learning objectives, why the topic matters, core concepts, step-by-step explanation, worked example, common mistakes, practical application/use case, recap, and discussion/check-for-understanding. Adapt this sequence to the topic.
-Each teaching slide should have 4-6 specific, informative bullets (not vague one-line labels). Include concrete examples, definitions, comparisons, or steps wherever relevant. Speaker notes for EVERY slide should be 70-120 words with a teaching explanation, example/analogy, and a question or transition for the trainer.
-Create 2-3 meaningful code examples when the topic involves programming; include complete runnable code and a realistic expected output, but do not claim it has been tested. For non-programming topics, provide relevant demonstrations instead.
-Create 4 exercises with clear requirements and acceptance criteria, 8-10 quiz questions with four plausible options and explanations, and 10-14 concise cheat-sheet entries. Include 3-5 measurable learning objectives. Avoid repetition and filler. Keep content accurate and matched to the learner level. Output valid JSON only.
+Audience/level: {level}
+Programming language (when relevant): {language}
+Session duration: {duration} minutes.
+
+Return ONLY valid JSON with exactly these top-level keys:
+"title", "topic", "level", "durationMinutes", "language", "objectives",
+"slides", "codeExamples", "exercises", "quiz", "cheatSheet".
+
+Requirements:
+- Create 7 to 8 useful slides, ordered as a coherent lesson from introduction to recap.
+- Each slide must have "title", "bullets" (2 to 4 informative, specific bullets), and
+  "speakerNotes" (a useful trainer script of about 40-70 words).
+- Include practical examples, definitions, step-by-step explanations, and real-world applications.
+- For every slide also include "visualType" (one of "image", "flowchart", "architecture",
+  "timeline", "comparison", "chart", "none"), "visualDescription" (specific instructions
+  for a relevant visual), and "visualLabels" (array of labels for diagrams; otherwise []).
+- Include 1 to 2 "codeExamples" if programming is relevant. Each has "id", "title",
+  "language", "code", "testDescription", "expectedOutput". For non-programming topics,
+  provide 1-2 worked examples instead with the same fields and empty code if not applicable.
+- Include 2 exercises, each with "title", "description", "difficulty", "testHint".
+- Include 3 quiz questions, each with "question", four "options", "correctIndex" (0-3),
+  and "explanation".
+- Include 5 to 6 cheatSheet items with "term" and "definition".
+- Be accurate, avoid fabricated citations/statistics, and flag uncertainty instead of inventing facts.
+- Keep every field concise and specific. Do not add extra sections or repeat content. Do not put markdown fences around the JSON.
 """
     course, message = call_gemini(prompt)
-    if course:
-        course["_source"] = "Gemini AI"
-    else:
-        course = json.loads(json.dumps(SAMPLE_COURSE))
-        course.update({"title":topic, "topic":topic, "level":level, "durationMinutes":duration, "language":language})
-        course["_source"] = "Sample fallback"
-        course["_generationNotice"] = message
-    return jsonify({"course":course, "message":message, "source":course["_source"]})
+    if not course:
+        return jsonify({"error": message, "source": "Gemini AI", "sampleFallback": False}), 502
+
+    course["_source"] = "Gemini AI"
+    return jsonify({"course": course, "message": message, "source": "Gemini AI"})
+
 
 @app.route("/api/verify", methods=["POST"])
 def verify():
@@ -224,7 +337,7 @@ def export_pptx():
                 textbox(slide, .65, .35, 11.8, .3, section.upper(), 9, PURPLE, True)
                 textbox(slide, .65, .75, 12, .65, title, 27, NAVY, True)
                 rect(slide, .65, 1.48, 1.0, .055, TEAL)
-                textbox(slide, .65, 7.08, 9, .2, str(course.get("title", "CourseForge AI"))[:85], 8, MUTED)
+                textbox(slide, .65, 7.08, 9, .2, str(course.get("title", "CourseKraft AI"))[:85], 8, MUTED)
                 textbox(slide, 12.1, 7.04, .55, .25, f"{n:02d}", 9, MUTED, True)
             return slide
 
@@ -235,7 +348,7 @@ def export_pptx():
         rect(slide, 9.25, 0, 4.1, 7.5, INK)
         rect(slide, 10.0, .85, 2.1, .12, PURPLE)
         rect(slide, 10.6, 1.18, 1.5, .12, TEAL)
-        textbox(slide, .85, .75, 7.8, .35, "COURSEFORGE AI  /  TRAINING DECK", 11, TEAL, True)
+        textbox(slide, .85, .75, 7.8, .35, "COURSEKRAFT AI  /  TRAINING DECK", 11, TEAL, True)
         textbox(slide, .85, 1.55, 8.0, 2.1, course.get("title", "Course Learning Deck"), 34, WHITE, True)
         textbox(slide, .9, 4.05, 7.3, .8, f"{course.get('level','Beginner')}  •  {course.get('durationMinutes',45)} minutes  •  {course.get('language','')}", 16, RGBColor(205, 213, 235))
         textbox(slide, .9, 5.45, 7.5, .6, "Concepts  ·  Worked examples  ·  Practice", 13, TEAL, True)
@@ -276,6 +389,36 @@ def export_pptx():
                 except Exception:
                     pass
 
+            # Turn the model's diagram labels into native editable slide shapes.
+            # This produces genuine PPT visuals without relying on remote images.
+            visual_type = str(item.get("visualType", "none")).lower()
+            labels = [str(label)[:90] for label in item.get("visualLabels", []) if str(label).strip()][:8]
+            if visual_type not in ("none", "image") and labels:
+                diagram = base_slide(f"{item.get('title', 'Concept')} — visual", "Concept visual", len(prs.slides)+1)
+                description = str(item.get("visualDescription", ""))[:220]
+                if description:
+                    textbox(diagram, .75, 1.65, 11.8, .55, description, 13, MUTED)
+                horizontal = visual_type in ("flowchart", "timeline") and len(labels) <= 6
+                if horizontal:
+                    count = len(labels)
+                    card_w = min(2.25, 10.9 / max(count, 1))
+                    gap = (11.5 - count * card_w) / max(count - 1, 1)
+                    y = 3.05
+                    for j, label in enumerate(labels):
+                        x = .9 + j * (card_w + gap)
+                        rect(diagram, x, y, card_w, 1.15, WHITE, True)
+                        textbox(diagram, x+.12, y+.16, card_w-.24, .82, label, 13, INK, True)
+                        if j < count - 1:
+                            textbox(diagram, x+card_w, y+.35, gap, .35, "→", 22, PURPLE, True)
+                else:
+                    cols = 2
+                    for j, label in enumerate(labels):
+                        col, row = j % cols, j // cols
+                        x, y = .9 + col * 5.95, 2.45 + row * .94
+                        rect(diagram, x, y, 5.55, .72, WHITE, True)
+                        rect(diagram, x, y, .08, .72, TEAL if j % 2 else PURPLE)
+                        textbox(diagram, x+.22, y+.13, 5.1, .45, label, 14, INK, True)
+
         # Code examples as readable dedicated slides
         for code in course.get("codeExamples", []):
             slide = base_slide(code.get("title", "Worked code example"), "Worked example", len(prs.slides)+1, dark=True)
@@ -287,6 +430,36 @@ def export_pptx():
             textbox(slide, .8, 6.45, 11.8, .5, "Expected output: " + str(code.get("expectedOutput", "Not specified"))[:220], 12, TEAL, True)
             try:
                 slide.notes_slide.notes_text_frame.text = "Test description: " + str(code.get("testDescription", "Not specified"))
+            except Exception:
+                pass
+
+        # Practice materials are part of the teaching package and belong in the deck.
+        exercises = course.get("exercises", [])
+        if exercises:
+            slide = base_slide("Practice exercises", "Apply", len(prs.slides)+1)
+            for i, exercise in enumerate(exercises[:6]):
+                col, row = i % 2, i // 2
+                x, y = .75 + col * 6.0, 1.85 + row * 1.65
+                rect(slide, x, y, 5.65, 1.42, WHITE, True)
+                textbox(slide, x+.2, y+.12, 5.2, .3, exercise.get("title", f"Exercise {i+1}"), 15, PURPLE, True)
+                textbox(slide, x+.2, y+.48, 5.2, .7, exercise.get("description", ""), 11, INK)
+
+        quiz = course.get("quiz", [])
+        for offset in range(0, len(quiz), 2):
+            slide = base_slide("Knowledge check", "Review", len(prs.slides)+1)
+            for j, question in enumerate(quiz[offset:offset+2]):
+                y = 1.85 + j * 2.35
+                textbox(slide, .85, y, 11.6, .58, f"{offset+j+1}. {question.get('question', '')}", 17, NAVY, True)
+                options = question.get("options", [])
+                for k, option in enumerate(options[:4]):
+                    col, row = k % 2, k // 2
+                    x, oy = .95 + col * 5.9, y + .72 + row * .6
+                    rect(slide, x, oy, 5.55, .46, WHITE, True)
+                    textbox(slide, x+.15, oy+.08, 5.2, .3, f"{chr(65+k)}. {option}", 11, INK)
+            try:
+                answers = [f"{offset+i+1}. {q.get('options', [])[q.get('correctIndex', -1)]}" for i, q in enumerate(quiz[offset:offset+2]) if isinstance(q.get("correctIndex"), int) and 0 <= q.get("correctIndex") < len(q.get("options", []))]
+                if answers:
+                    slide.notes_slide.notes_text_frame.text = "INSTRUCTOR ANSWER KEY\n" + "\n".join(answers)
             except Exception:
                 pass
 
@@ -309,7 +482,7 @@ def export_pptx():
         textbox(slide, .95, 4.85, 10.8, .6, "Questions?  •  Discussion  •  Practice", 16, TEAL, True)
         out = BytesIO()
         prs.save(out); out.seek(0)
-        filename = "courseforge_designed_course.pptx"
+        filename = "coursekraft_designed_course.pptx"
         return send_file(out, as_attachment=True, download_name=filename,
                          mimetype="application/vnd.openxmlformats-officedocument.presentationml.presentation")
     except Exception as e:
@@ -328,7 +501,7 @@ def export_pdf():
         doc = SimpleDocTemplate(out, pagesize=A4, rightMargin=18*mm, leftMargin=18*mm, topMargin=18*mm, bottomMargin=18*mm)
         styles = getSampleStyleSheet()
         styles.add(ParagraphStyle(name="CFTitle", parent=styles["Title"], textColor=colors.HexColor("#5b4bdb"), spaceAfter=14))
-        story = [Paragraph(str(course.get("title","CourseForge AI")), styles["CFTitle"]),
+        story = [Paragraph(str(course.get("title","CourseKraft AI")), styles["CFTitle"]),
                  Paragraph(f"Level: {course.get('level','')} | Duration: {course.get('durationMinutes',45)} minutes", styles["Normal"]),
                  Spacer(1,12)]
         for s in course.get("slides",[]):
@@ -359,7 +532,7 @@ def export_pdf():
         for item in course.get("cheatSheet",[]):
             story.append(Paragraph(f"<b>{item.get('term','')}</b>: {item.get('definition','')}", styles["BodyText"]))
         doc.build(story); out.seek(0)
-        return send_file(out, as_attachment=True, download_name="courseforge_course.pdf", mimetype="application/pdf")
+        return send_file(out, as_attachment=True, download_name="coursekraft_course.pdf", mimetype="application/pdf")
     except Exception as e:
         return jsonify({"error":"PDF export failed. Install requirements and retry: "+str(e)[:200]}), 500
 

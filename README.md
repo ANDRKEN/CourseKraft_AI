@@ -1,11 +1,14 @@
-# CourseForge AI — Local Hackathon MVP
+# CourseKraft AI — Local Hackathon MVP
 
 A local-first MVP for the PS5 Verified Course Material Studio. It creates teaching materials, previews slides/notes/quizzes/exercises/cheat sheets, exports PPTX/PDF, and reports code verification honestly.
 
 ## Features
 - Topic, learner level, duration and language form
 - Optional Gemini API generation using `GEMINI_API_KEY`
-- Clearly labelled sample fallback when no API is configured or generation fails
+- Automatic failover to stable Gemini Flash models when the selected model stays overloaded
+- Compact generation settings to reduce response time and token use
+- Built-in sample course loads separately so the app can be explored without an API key
+- AI generation failures are shown as errors; they never silently replace the requested course with sample content
 - Slide preview and in-browser editing
 - Quiz, exercises and cheat sheet views
 - PPTX and PDF export
@@ -31,7 +34,7 @@ python app.py
 1. Create a key at https://aistudio.google.com/.
 2. Open `.env` in a text editor and set `GEMINI_API_KEY=your_key_here`.
 3. Restart the app. Keep `.env` private and never upload it to GitHub.
-4. Free-tier access, model availability and quotas can change; check Google AI Studio.
+4. Free-tier access, model availability and quotas can change; check Google AI Studio. The app retries temporary errors and switches models after repeated 5xx overloads.
 
 ## Enable real code verification (optional)
 Configure `JUDGE0_URL` to a trusted Judge0-compatible service and `JUDGE0_API_KEY` if required. The app supports language IDs for Java, Python 3, JavaScript and C++. Test service availability before the hackathon. Hosted Judge0 providers may require provider-specific headers or settings; adjust `verify()` if necessary.
@@ -49,7 +52,8 @@ Deploy the Flask app to a Python-capable host. Configure secrets as environment 
 5. QA/demo/presentation
 
 ## Current MVP limits
-- The sample fallback is demo content, not a live AI result.
+- The built-in sample course is demo content, not a live AI result. It is available separately from AI generation.
+- Temporary Gemini HTTP 408, 429, 500, 502, 503 and 504 responses and connection timeouts are retried up to two times with backoff. Invalid model or key errors are reported without retrying.
 - Quiz answers are displayed for instructor review; this MVP is not a student exam platform.
 - Code runner integration depends on a configured, reachable Judge0-compatible service.
 - PDF/PPTX exports are generated locally by the Flask server.

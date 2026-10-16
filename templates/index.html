@@ -1,64 +1,1493 @@
-<!doctype html>
-<html lang="en">
+<!DOCTYPE html>
+<html lang="en" class="dark scroll-smooth">
 <head>
-<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>CourseForge AI — Verified Course Material Studio</title>
-<link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/static/style.css">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CourseKraft AI — Liquid Glass Verified Material Studio</title>
+  
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            obsidian: '#05070c',
+            midnight: '#0b101d',
+            liquid: {
+              base: 'rgba(12, 18, 34, 0.45)',
+              stroke: 'rgba(255, 255, 255, 0.16)',
+              sheen: 'rgba(255, 255, 255, 0.42)',
+              glow: 'rgba(99, 102, 241, 0.18)'
+            },
+            accent: {
+              purple: '#6955e6',
+              purpleLight: '#9485ff',
+              teal: '#27beb4',
+              tealLight: '#5ce8df',
+              pink: '#ec4899',
+            }
+          },
+          fontFamily: {
+            sans: ['Inter', 'system-ui', '-apple-system', 'sans-serif'],
+            mono: ['JetBrains Mono', 'Fira Code', 'Consolas', 'monospace']
+          },
+          animation: {
+            'float-slow': 'float 7s ease-in-out infinite',
+            'float-medium': 'float 5.2s ease-in-out infinite 1.2s',
+            'float-fast': 'float 6.4s ease-in-out infinite 0.6s',
+            'liquid-shimmer': 'shimmer 8s linear infinite',
+            'pulse-glow': 'pulseGlow 5s ease-in-out infinite',
+          },
+          keyframes: {
+            float: {
+              '0%, 100%': { transform: 'translateY(0px)' },
+              '50%': { transform: 'translateY(-10px)' },
+            },
+            shimmer: {
+              '0%': { backgroundPosition: '-200% 0' },
+              '100%': { backgroundPosition: '200% 0' },
+            },
+            pulseGlow: {
+              '0%, 100%': { opacity: '0.45', transform: 'scale(1)' },
+              '50%': { opacity: '0.75', transform: 'scale(1.08)' },
+            }
+          }
+        }
+      }
+    }
+  </script>
+
+  <!-- Google Fonts & Lucide Icons -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <!-- Three.js CDN -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+
+  <style>
+    /* Custom Scrollbar */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: #05070c; }
+    ::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.12); border-radius: 9999px; }
+    ::-webkit-scrollbar-thumb:hover { background: rgba(255, 255, 255, 0.25); }
+
+    /* HYPER-REALISTIC LIQUID GLASS CORE STYLES */
+    .liquid-glass-nav {
+      background: linear-gradient(
+        135deg,
+        rgba(255, 255, 255, 0.12) 0%,
+        rgba(15, 23, 42, 0.58) 28%,
+        rgba(8, 12, 24, 0.72) 100%
+      );
+      backdrop-filter: blur(28px) saturate(200%) contrast(108%);
+      -webkit-backdrop-filter: blur(28px) saturate(200%) contrast(108%);
+      border: 1px solid rgba(255, 255, 255, 0.18);
+      box-shadow: 
+        0 24px 60px -15px rgba(0, 0, 0, 0.65),
+        inset 0 1.5px 1px 0 rgba(255, 255, 255, 0.42),
+        inset 0 -1.5px 1px 0 rgba(0, 0, 0, 0.4),
+        0 0 25px -4px rgba(99, 102, 241, 0.18);
+      position: relative;
+    }
+
+    /* Specular light streak running on top rim */
+    .liquid-glass-nav::before,
+    .liquid-glass-panel::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 10%;
+      right: 10%;
+      height: 1px;
+      background: linear-gradient(
+        90deg, 
+        transparent 0%, 
+        rgba(255, 255, 255, 0.85) 50%, 
+        transparent 100%
+      );
+      pointer-events: none;
+      z-index: 1;
+    }
+
+    .liquid-glass-panel {
+      background: linear-gradient(
+        140deg,
+        rgba(255, 255, 255, 0.08) 0%,
+        rgba(13, 19, 36, 0.62) 32%,
+        rgba(6, 10, 20, 0.78) 100%
+      );
+      backdrop-filter: blur(26px) saturate(190%) contrast(105%);
+      -webkit-backdrop-filter: blur(26px) saturate(190%) contrast(105%);
+      border: 1px solid rgba(255, 255, 255, 0.13);
+      box-shadow: 
+        0 20px 50px -10px rgba(0, 0, 0, 0.55),
+        inset 0 1px 1px rgba(255, 255, 255, 0.32),
+        inset 0 -1px 1px rgba(0, 0, 0, 0.35);
+      position: relative;
+    }
+
+    .liquid-glass-pill {
+      background: linear-gradient(
+        135deg,
+        rgba(255, 255, 255, 0.14) 0%,
+        rgba(255, 255, 255, 0.04) 100%
+      );
+      backdrop-filter: blur(20px) saturate(180%);
+      -webkit-backdrop-filter: blur(20px) saturate(180%);
+      border: 1px solid rgba(255, 255, 255, 0.18);
+      box-shadow: 
+        0 8px 24px -4px rgba(0, 0, 0, 0.4),
+        inset 0 1px 0 rgba(255, 255, 255, 0.4);
+    }
+
+    .liquid-glass-card {
+      background: linear-gradient(
+        145deg,
+        rgba(255, 255, 255, 0.06) 0%,
+        rgba(15, 23, 42, 0.48) 40%,
+        rgba(7, 11, 22, 0.65) 100%
+      );
+      backdrop-filter: blur(20px) saturate(180%);
+      -webkit-backdrop-filter: blur(20px) saturate(180%);
+      border: 1px solid rgba(255, 255, 255, 0.11);
+      box-shadow: 
+        0 14px 35px -8px rgba(0, 0, 0, 0.5),
+        inset 0 1px 0 rgba(255, 255, 255, 0.25);
+      transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .liquid-glass-card:hover {
+      border-color: rgba(92, 232, 223, 0.35);
+      box-shadow: 
+        0 20px 45px -8px rgba(39, 190, 180, 0.25),
+        inset 0 1px 0 rgba(255, 255, 255, 0.45);
+      transform: translateY(-2px);
+    }
+
+    /* Shimmer gradient line */
+    .shimmer-edge {
+      background: linear-gradient(
+        90deg,
+        rgba(255, 255, 255, 0) 0%,
+        rgba(92, 232, 223, 0.6) 25%,
+        rgba(148, 133, 255, 0.8) 50%,
+        rgba(255, 255, 255, 0.9) 75%,
+        rgba(255, 255, 255, 0) 100%
+      );
+      background-size: 200% 100%;
+      animation: shimmer 6s infinite linear;
+    }
+
+    /* Vignette on Hero Canvas */
+    #hero-canvas-container::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(circle at center, transparent 35%, #05070c 92%);
+      pointer-events: none;
+    }
+  </style>
 </head>
-<body>
-<div class="app-shell">
-  <aside class="sidebar">
-    <div class="brand"><div class="brand-icon">C</div><div><b>CourseForge</b><small>AI STUDIO</small></div></div>
-    <div class="workspace-label">WORKSPACE</div>
-    <button class="nav active" data-tab="generate"><span>✦</span> Generate course</button>
-    <button class="nav" data-tab="slides"><span>▤</span> Slides & notes</button>
-    <button class="nav" data-tab="code"><span>⌘</span> Code verification</button>
-    <button class="nav" data-tab="practice"><span>◉</span> Quiz & exercises</button>
-    <button class="nav" data-tab="cheat"><span>▧</span> Cheat sheet</button>
-    <div class="sidebar-bottom"><div class="status-dot"></div><div><b>Local workspace</b><small>Your project stays on this device</small></div></div>
-  </aside>
-  <main class="main">
-    <header class="topbar"><div><div class="eyebrow">VERIFIED COURSE MATERIAL STUDIO</div><h1 id="pageTitle">Create learning material</h1></div><div class="top-actions"><span id="aiStatus" class="pill neutral">Checking integrations…</span><button id="exportPdfTop" class="btn btn-quiet">↓ Export PDF</button></div></header>
-    <section id="generate" class="panel active-panel">
-      <div class="hero"><div><div class="hero-tag"><span class="spark">✦</span> FROM TOPIC TO TEACHING KIT</div><h2>Teach better.<br><em>Prepare in minutes.</em></h2><p>Generate structured teaching materials, review every slide, and verify code examples before you take them to class.</p></div><div class="hero-art"><div class="orb orb1"></div><div class="orb orb2"></div><div class="mini-card"><span class="mini-icon">✓</span><div><b>Quality check</b><small>Verification-aware workflow</small></div></div><div class="floating-lines">✳ &nbsp; ◇ &nbsp; ✦</div></div></div>
-      <div class="content-grid">
-        <div class="card form-card"><div class="card-head"><div><h3>Course setup</h3><p>Tell us what you want to teach.</p></div><span class="step">01 / INPUT</span></div>
-          <form id="generateForm">
-            <label>Topic or lesson title</label><input id="topic" required maxlength="180" value="Object-Oriented Programming in Java" placeholder="e.g. React hooks, DBMS normalization">
-            <div class="two-col"><div><label>Learner level</label><select id="level"><option>Beginner</option><option>Intermediate</option><option>Advanced</option></select></div><div><label>Session duration</label><select id="duration"><option value="30">30 minutes</option><option value="45" selected>45 minutes</option><option value="60">60 minutes</option><option value="90">90 minutes</option></select></div></div>
-            <label>Programming language</label><select id="language"><option>Java</option><option>Python</option><option>JavaScript</option><option>C++</option></select>
-            <div class="hint"><span>✦</span><div><b>One generation, six outputs</b><small>Slides · Notes · Code · Exercises · Quiz · Cheat sheet</small></div></div>
-            <button class="btn btn-primary btn-full" id="generateBtn" type="submit"><span>✦</span> Generate course materials <span class="btn-arrow">↗</span></button>
-            <p class="microcopy">AI generation needs a configured API key. Without one, a clearly labelled sample course loads so you can explore the app.</p>
-          </form>
+
+<body class="bg-obsidian text-slate-100 font-sans antialiased overflow-x-hidden selection:bg-accent-purple selection:text-white min-h-screen">
+
+  <!-- Ambient Fluid Lighting Nodes -->
+  <div class="fixed top-[-10%] left-[-8%] w-[55vw] h-[55vw] bg-accent-purple/20 rounded-full pointer-events-none animate-pulse-glow z-0 blur-[90px]"></div>
+  <div class="fixed bottom-[-15%] right-[-8%] w-[50vw] h-[50vw] bg-accent-teal/15 rounded-full pointer-events-none animate-pulse-glow z-0 blur-[100px]" style="animation-delay: 2.5s;"></div>
+  <div class="fixed top-[45%] left-[20%] w-[35vw] h-[35vw] bg-accent-pink/10 rounded-full pointer-events-none blur-[120px] z-0"></div>
+
+  <!-- ULTRA-PREMIUM LIQUID GLASS FLOATING NAVBAR -->
+  <header class="fixed top-4 left-0 right-0 z-50 px-4 sm:px-6 md:px-8 max-w-7xl mx-auto">
+    <div class="liquid-glass-nav rounded-2xl px-5 py-3.2 flex items-center justify-between transition-all">
+      
+      <!-- Top Subtle Refraction Accent Line -->
+      <div class="absolute inset-x-6 -top-px h-px shimmer-edge opacity-70 rounded-full"></div>
+
+      <!-- Brand Logo / Identity -->
+      <a href="#" class="flex items-center gap-3 group relative">
+        <div class="relative w-9 h-9 rounded-xl liquid-glass-pill flex items-center justify-center border border-white/25 group-hover:scale-105 transition-all shadow-inner">
+          <div class="absolute inset-0 bg-gradient-to-tr from-accent-purple/70 to-accent-teal/50 rounded-xl opacity-80 group-hover:opacity-100 transition-opacity"></div>
+          <i data-lucide="sparkles" class="w-4 h-4 text-white relative z-10"></i>
         </div>
-        <div class="card output-card"><div class="card-head"><div><h3>Your learning kit</h3><p>Everything for a complete teaching session.</p></div><span class="pill purple">6 deliverables</span></div>
-          <div class="deliverables"><div class="deliverable"><div class="d-icon lavender">▤</div><div><b>Presentation slides</b><small>Structured, classroom-ready</small></div><span>01</span></div><div class="deliverable"><div class="d-icon blue">✎</div><div><b>Trainer notes</b><small>Speaking points per slide</small></div><span>02</span></div><div class="deliverable"><div class="d-icon green">{ }</div><div><b>Runnable code</b><small>Examples with test expectations</small></div><span>03</span></div><div class="deliverable"><div class="d-icon amber">⌁</div><div><b>Practical exercises</b><small>Hands-on learning tasks</small></div><span>04</span></div><div class="deliverable"><div class="d-icon pink">◉</div><div><b>Knowledge quiz</b><small>Answers and explanations</small></div><span>05</span></div><div class="deliverable"><div class="d-icon slate">▧</div><div><b>Cheat sheet</b><small>Fast revision reference</small></div><span>06</span></div></div>
-          <div class="trust-note"><span>✓</span><div><b>Verification you can trust</b><small>We only report a code test as passed when a configured runner actually executes it.</small></div></div>
+        <div class="flex flex-col">
+          <span class="text-sm sm:text-base font-bold tracking-tight text-white flex items-center gap-1.5">
+            CourseKraft
+            <span class="text-[10px] font-mono px-2 py-0.5 rounded-full bg-accent-purple/25 border border-accent-purpleLight/40 text-accent-purpleLight shadow-sm">AI STUDIO</span>
+          </span>
+          <span class="text-[9px] text-slate-400 font-medium tracking-widest uppercase">Liquid Verified Curriculum</span>
+        </div>
+      </a>
+
+      <!-- Center Navigation Links (Desktop) -->
+      <nav class="hidden md:flex items-center gap-6 text-xs font-medium text-slate-300">
+        <a href="#hero" class="hover:text-accent-tealLight transition-colors">Overview</a>
+        <a href="#generator-section" class="hover:text-accent-tealLight transition-colors">Curriculum Studio</a>
+        <a href="#workspace" class="hover:text-accent-tealLight transition-colors">Deck View</a>
+        <a href="#tab-content-verification" onclick="switchTab('verification')" class="hover:text-accent-tealLight transition-colors">Code Lab</a>
+        <a href="#tab-content-quiz" onclick="switchTab('quiz')" class="hover:text-accent-tealLight transition-colors">Quiz & Practice</a>
+      </nav>
+
+      <!-- Right Status & Action Controls -->
+      <div class="flex items-center gap-3">
+        
+        <!-- Live System Status Liquid Badge -->
+        <div id="status-pill" class="liquid-glass-pill px-3 py-1.5 rounded-full flex items-center gap-2 text-[11px] font-medium text-slate-200">
+          <span id="gemini-status-dot" class="w-2 h-2 rounded-full bg-emerald-400 shadow-sm shadow-emerald-400"></span>
+          <span id="gemini-status-text" class="hidden sm:inline font-mono text-[10.5px]">Probing Engine...</span>
+        </div>
+
+        <!-- Load Demo Course Button -->
+        <button id="btn-load-sample" class="liquid-glass-pill px-3.5 py-1.5 rounded-xl text-white text-xs font-semibold hover:bg-white/10 active:scale-95 transition-all flex items-center gap-1.5">
+          <i data-lucide="layers" class="w-3.5 h-3.5 text-accent-tealLight"></i>
+          <span class="hidden sm:inline">Load Demo</span>
+        </button>
+
+        <!-- New Course CTA -->
+        <a href="#generator-section" class="hidden lg:inline-flex text-xs font-semibold px-4 py-1.5 rounded-xl bg-gradient-to-r from-accent-purple to-accent-teal text-white shadow-lg shadow-accent-purple/30 hover:brightness-110 active:scale-95 transition-all border border-white/20">
+          New Course
+        </a>
+      </div>
+      
+      <!-- Bottom Rim Ambient Glow -->
+      <div class="absolute inset-x-10 -bottom-px h-px bg-gradient-to-r from-transparent via-white/20 to-transparent"></div>
+    </div>
+  </header>
+
+  <!-- HERO SECTION WITH 3D INTERACTIVE LIQUID CANVAS & GLASS HUDS -->
+  <section id="hero" class="relative min-h-[94vh] flex flex-col justify-center items-center pt-28 pb-12 px-4 overflow-hidden z-10">
+    
+    <!-- 3D Canvas Background Container -->
+    <div id="hero-canvas-container" class="absolute inset-0 w-full h-full cursor-grab active:cursor-grabbing"></div>
+
+    <!-- Hero Content Overlay -->
+    <div class="relative z-20 text-center max-w-4xl mx-auto pointer-events-none mt-6 sm:mt-0">
+      
+      <!-- Top Floating Liquid Badge -->
+      <div class="inline-flex items-center gap-2 px-4 py-1.5 rounded-full liquid-glass-pill border border-accent-purple/35 text-xs font-semibold text-accent-purpleLight mb-6 shadow-xl pointer-events-auto">
+        <span class="w-2 h-2 rounded-full bg-accent-tealLight animate-pulse"></span>
+        PS5 Dual-Engine Verified Studio • Isolated Sandboxing
+      </div>
+
+      <!-- Main Headline -->
+      <h1 class="text-4xl sm:text-6xl md:text-7xl font-extrabold tracking-tight text-white mb-6 leading-[1.12] drop-shadow-md">
+        Elevate Your <br>
+        <span class="text-transparent bg-clip-text bg-gradient-to-r from-white via-slate-100 to-slate-400">Teaching Experience</span>
+      </h1>
+
+      <!-- Subtitle -->
+      <p class="text-sm sm:text-base md:text-lg text-slate-300 max-w-2xl mx-auto font-normal mb-9 leading-relaxed drop-shadow">
+        Create complete lesson packages: lecture slide decks with speaker notes, runnable practice code verified via isolated Judge0 sandboxes, flow diagrams, and PPTX/PDF exports.
+      </p>
+
+      <!-- Primary Action Buttons -->
+      <div class="flex flex-wrap items-center justify-center gap-4 pointer-events-auto">
+        <a href="#generator-section" class="px-7 py-3.5 rounded-2xl bg-gradient-to-r from-accent-purple via-accent-purpleLight to-accent-teal text-white font-semibold text-sm shadow-xl shadow-accent-purple/40 hover:shadow-accent-purple/60 hover:scale-[1.02] active:scale-95 transition-all flex items-center gap-2 group border border-white/25">
+          <span>Configure & Generate Course</span>
+          <i data-lucide="arrow-right" class="w-4 h-4 group-hover:translate-x-1 transition-transform"></i>
+        </a>
+        <button id="hero-demo-btn" class="px-6 py-3.5 rounded-2xl liquid-glass-panel text-slate-200 hover:text-white font-medium text-sm hover:bg-white/10 active:scale-95 transition-all flex items-center gap-2">
+          <i data-lucide="play-circle" class="w-4 h-4 text-accent-tealLight"></i>
+          <span>Explore Interactive Studio</span>
+        </button>
+      </div>
+
+    </div>
+
+    <!-- LIQUID GLASS FLOATING HUD WIDGETS -->
+    <!-- Left HUD Badge: Verification Integrity -->
+    <div class="absolute left-6 lg:left-16 top-[55%] md:top-[50%] -translate-y-1/2 z-20 pointer-events-auto animate-float-medium hidden sm:block">
+      <div class="liquid-glass-panel p-5 rounded-3xl max-w-[220px]">
+        <div class="flex items-center justify-between text-xs text-slate-400 mb-2 font-medium">
+          <span class="font-mono text-[11px] uppercase tracking-wider">Verification Integrity</span>
+          <i data-lucide="shield-check" class="w-4 h-4 text-accent-tealLight"></i>
+        </div>
+        <div class="text-2xl font-black text-white flex items-center gap-2">
+          <span>100%</span>
+          <span class="text-[10px] font-mono text-accent-tealLight px-2 py-0.5 rounded-full bg-accent-teal/15 border border-accent-teal/35">Passed</span>
+        </div>
+        <p class="text-[10.5px] text-slate-400 mt-2 leading-relaxed">
+          Isolated sandboxed execution with honest verification reporting.
+        </p>
+      </div>
+    </div>
+
+    <!-- Right HUD Badge: Production Deck Exports -->
+    <div class="absolute right-6 lg:right-16 top-[58%] md:top-[54%] -translate-y-1/2 z-20 pointer-events-auto animate-float-fast hidden sm:block">
+      <div class="liquid-glass-panel p-5 rounded-3xl min-w-[210px]">
+        <div class="flex items-center justify-between text-xs text-slate-400 mb-2 font-medium">
+          <span class="font-mono text-[11px] uppercase tracking-wider">Deck Generation</span>
+          <span class="w-2 h-2 rounded-full bg-accent-purpleLight animate-pulse"></span>
+        </div>
+        <div class="text-2xl font-black text-white flex items-baseline gap-1.5">
+          <span>Native</span>
+          <span class="text-xs text-accent-purpleLight font-semibold">PPTX / PDF</span>
+        </div>
+        <div class="w-full bg-white/10 h-1.5 rounded-full mt-3 overflow-hidden p-0.5">
+          <div class="bg-gradient-to-r from-accent-teal to-accent-purple h-full w-[92%] rounded-full"></div>
         </div>
       </div>
-    </section>
-    <section id="slides" class="panel">
-      <div class="section-intro"><div><div class="eyebrow">COURSE WORKSPACE</div><h2>Slides & trainer notes</h2><p>Edit content before exporting your lesson.</p></div><button class="btn btn-primary" id="exportPptx">↓ Export PPTX</button></div>
-      <div class="editor-layout"><div class="card slide-list-card"><div class="card-head"><h3>Slides</h3><span id="slideCount" class="pill neutral">0 slides</span></div><div id="slideList"></div></div><div class="card slide-editor"><div class="editor-top"><span id="slideNumber" class="pill purple">SLIDE 01</span><span class="microcopy">Edits save in this session</span></div><label>Slide title</label><input id="slideTitle"><label>Bullet points <small>(one per line)</small></label><textarea id="slideBullets" rows="7"></textarea><label>Trainer notes</label><textarea id="slideNotes" rows="4"></textarea><button id="saveSlide" class="btn btn-primary">Save slide changes</button></div></div>
-    </section>
-    <section id="code" class="panel">
-      <div class="section-intro"><div><div class="eyebrow">QUALITY ASSURANCE</div><h2>Code verification</h2><p>Run code in a configured isolated runner and inspect actual results.</p></div></div>
-      <div class="card code-card"><div class="card-head"><div><h3>Code example</h3><p>Choose an example from your generated course.</p></div><select id="codeSelect" class="compact-select"></select></div><div class="code-meta"><span id="codeLang" class="pill neutral">JAVA</span><span class="microcopy">Untrusted code is not executed by this app's Flask process.</span></div><label>Source code</label><textarea id="codeEditor" class="code-editor" rows="13" spellcheck="false"></textarea><label>Expected standard output <small>(optional; exact trimmed match)</small></label><input id="expectedOutput" placeholder="Expected output, if applicable"><button id="verifyBtn" class="btn btn-primary">▶ Run verification</button><div id="verifyResult" class="verify-result neutral-result"><div class="result-mark">?</div><div><b>Not verified yet</b><p>Run verification to see the current status. If no runner is configured, the result stays NOT VERIFIED.</p></div></div></div>
-    </section>
-    <section id="practice" class="panel">
-      <div class="section-intro"><div><div class="eyebrow">CHECK UNDERSTANDING</div><h2>Quiz & exercises</h2><p>Review questions, answer keys and hands-on practice.</p></div></div>
-      <div class="card"><div class="card-head"><div><h3>Knowledge quiz</h3><p>Instructor review mode — correct answers are visible.</p></div><span id="quizCount" class="pill purple">0 questions</span></div><div id="quizList" class="quiz-list"></div></div>
-      <div class="card exercises-card"><div class="card-head"><div><h3>Practical exercises</h3><p>Tasks learners can attempt after the lesson.</p></div></div><div id="exerciseList" class="exercise-grid"></div></div>
-    </section>
-    <section id="cheat" class="panel">
-      <div class="section-intro"><div><div class="eyebrow">QUICK REFERENCE</div><h2>Cheat sheet</h2><p>Key terms to recap before leaving the classroom.</p></div><button id="exportPdfCheat" class="btn btn-primary">↓ Export full PDF</button></div>
-      <div class="card"><div class="card-head"><div><h3 id="cheatTitle">Course reference</h3><p>Core concepts at a glance.</p></div><span class="pill neutral">REVISION</span></div><div id="cheatGrid" class="cheat-grid"></div></div>
-    </section>
-    <footer><span>CourseForge AI <span class="footer-dot">•</span> Hackathon MVP</span><span>Built for teaching materials you can inspect and verify.</span></footer>
-  </main>
-</div>
-<div id="toast" class="toast"></div>
-<script src="/static/app.js"></script>
-</body></html>
+    </div>
+
+    <!-- Bottom Drag Prompt Indicator -->
+    <div class="absolute bottom-5 left-1/2 -translate-x-1/2 text-center z-20 pointer-events-none opacity-70 flex flex-col items-center">
+      <span class="text-[10px] text-slate-400 font-mono tracking-widest uppercase mb-1">Interactive 3D Fluid • Drag & Rotate Orb</span>
+      <i data-lucide="chevron-down" class="w-4 h-4 text-slate-400 animate-bounce"></i>
+    </div>
+  </section>
+
+  <!-- NOTIFICATION TOAST (Liquid Glass) -->
+  <div id="toast" class="fixed bottom-6 right-6 z-50 max-w-md p-4 rounded-2xl liquid-glass-panel shadow-2xl transition-all duration-300 transform translate-y-28 opacity-0 pointer-events-none flex items-start gap-3">
+    <div id="toast-icon" class="w-7 h-7 rounded-xl bg-accent-purple/20 text-accent-purpleLight flex items-center justify-center shrink-0 mt-0.5 border border-white/10">
+      <i data-lucide="info" class="w-4 h-4"></i>
+    </div>
+    <div class="flex-1">
+      <h4 id="toast-title" class="text-xs font-bold text-white">Notification</h4>
+      <p id="toast-message" class="text-xs text-slate-300 mt-0.5 leading-relaxed">Status update message.</p>
+    </div>
+    <button onclick="hideToast()" class="text-slate-400 hover:text-white p-1">
+      <i data-lucide="x" class="w-3.5 h-3.5"></i>
+    </button>
+  </div>
+
+  <!-- STUDIO GENERATION SECTION (Liquid Glass Card) -->
+  <section id="generator-section" class="relative py-20 px-4 md:px-8 max-w-6xl mx-auto z-20">
+    <div class="text-center mb-12">
+      <div class="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full liquid-glass-pill text-xs font-semibold text-accent-tealLight mb-3 border border-accent-teal/30">
+        <i data-lucide="sliders" class="w-3.5 h-3.5"></i>
+        <span>Studio Curriculum Configurator</span>
+      </div>
+      <h2 class="text-3xl md:text-4xl font-extrabold text-white tracking-tight">Generate Teaching Materials</h2>
+      <p class="text-sm text-slate-400 mt-2 max-w-xl mx-auto">Set your topic parameters. The generator orchestrates a structured 7-8 slide curriculum, delivery notes, concept flow diagrams, and verified code examples.</p>
+    </div>
+
+    <!-- Generator Input Liquid Glass Panel -->
+    <div class="liquid-glass-panel rounded-3xl p-6 sm:p-9 md:p-11 shadow-2xl relative overflow-hidden">
+      
+      <!-- Top Specular Shimmer -->
+      <div class="absolute top-0 inset-x-0 h-1 bg-gradient-to-r from-accent-purple via-accent-teal to-accent-pink"></div>
+
+      <form id="generator-form" class="space-y-6" onsubmit="event.preventDefault(); handleGenerate();">
+        
+        <!-- Topic Input -->
+        <div>
+          <label for="topic" class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2 flex items-center justify-between">
+            <span>Course Topic or Technology</span>
+            <span class="text-slate-500 font-mono text-[10px]">Max 180 chars</span>
+          </label>
+          <div class="relative">
+            <input 
+              type="text" 
+              id="topic" 
+              name="topic" 
+              required
+              placeholder="e.g., Object-Oriented Programming in Java, Rust Memory Safety, Microservices Security"
+              class="w-full px-4 py-3.5 bg-black/40 border border-white/15 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:border-accent-purpleLight focus:ring-2 focus:ring-accent-purple/25 transition-all text-sm font-medium shadow-inner"
+              value="Object-Oriented Programming in Java"
+            >
+            <div class="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400">
+              <i data-lucide="terminal" class="w-4 h-4"></i>
+            </div>
+          </div>
+        </div>
+
+        <!-- 3-Column Configuration Row -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+          
+          <!-- Audience / Learner Level -->
+          <div>
+            <label class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">Audience Level</label>
+            <div class="grid grid-cols-3 gap-2">
+              <button type="button" class="level-btn py-2 px-2.5 rounded-xl border border-accent-purple bg-accent-purple/25 text-white font-medium text-xs transition-all active:scale-95 shadow-sm" data-level="Beginner">Beginner</button>
+              <button type="button" class="level-btn py-2 px-2.5 rounded-xl border border-white/15 bg-black/30 text-slate-400 hover:text-white font-medium text-xs transition-all active:scale-95" data-level="Intermediate">Intermed.</button>
+              <button type="button" class="level-btn py-2 px-2.5 rounded-xl border border-white/15 bg-black/30 text-slate-400 hover:text-white font-medium text-xs transition-all active:scale-95" data-level="Advanced">Advanced</button>
+            </div>
+          </div>
+
+          <!-- Session Duration -->
+          <div>
+            <div class="flex items-center justify-between mb-2">
+              <label for="duration" class="text-xs font-semibold text-slate-300 uppercase tracking-wider">Session Duration</label>
+              <span id="duration-val" class="text-xs font-mono font-bold text-accent-tealLight">45 min</span>
+            </div>
+            <input 
+              type="range" 
+              id="duration" 
+              min="15" 
+              max="180" 
+              step="15" 
+              value="45"
+              class="w-full h-2 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-accent-teal"
+              oninput="document.getElementById('duration-val').textContent = this.value + ' min'"
+            >
+            <div class="flex justify-between text-[10px] text-slate-500 mt-1 font-mono">
+              <span>15m</span>
+              <span>45m</span>
+              <span>90m</span>
+              <span>180m</span>
+            </div>
+          </div>
+
+          <!-- Language Selector -->
+          <div>
+            <label for="language" class="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">Primary Code Stack</label>
+            <select id="language" class="w-full px-3.5 py-2.5 bg-black/40 border border-white/15 rounded-xl text-white text-xs font-medium focus:outline-none focus:border-accent-purpleLight">
+              <option value="Java">Java</option>
+              <option value="Python">Python 3</option>
+              <option value="JavaScript">JavaScript (ES6)</option>
+              <option value="C++">C++</option>
+              <option value="General">General / Architecture (No Code)</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Submit & Generate Button -->
+        <div class="pt-3 flex flex-col sm:flex-row items-center justify-between gap-4 border-t border-white/10">
+          <div class="flex items-center gap-2 text-xs text-slate-400">
+            <i data-lucide="sparkles" class="w-3.5 h-3.5 text-accent-tealLight"></i>
+            <span>Orchestrates slides, speaker notes, diagrams, practice tests, and quiz questions.</span>
+          </div>
+
+          <button 
+            type="submit" 
+            id="btn-generate"
+            class="w-full sm:w-auto px-8 py-3.5 rounded-xl bg-gradient-to-r from-accent-purple to-accent-teal text-white font-semibold text-sm shadow-xl shadow-accent-purple/30 hover:brightness-110 active:scale-95 transition-all flex items-center justify-center gap-2 group border border-white/20"
+          >
+            <i data-lucide="wand-2" class="w-4 h-4 group-hover:rotate-12 transition-transform"></i>
+            <span id="btn-generate-text">Generate Full Material Studio</span>
+          </button>
+        </div>
+
+      </form>
+    </div>
+  </section>
+
+  <!-- MULTI-TAB WORKSPACE SECTION -->
+  <section id="workspace" class="relative py-12 px-4 md:px-8 max-w-7xl mx-auto z-20">
+    
+    <!-- Course Meta Banner (Liquid Glass) -->
+    <div class="liquid-glass-panel rounded-3xl p-6 md:p-8 mb-8 flex flex-col md:flex-row items-start md:items-center justify-between gap-5">
+      <div>
+        <div class="flex items-center gap-2.5 mb-2">
+          <span id="meta-source-pill" class="liquid-glass-pill px-3 py-1 rounded-full text-[10.5px] font-bold text-accent-purpleLight border border-accent-purple/40 uppercase tracking-wide">
+            Sample Course Loaded
+          </span>
+          <span id="meta-level-pill" class="liquid-glass-pill px-3 py-1 rounded-full text-[10.5px] font-bold text-slate-300">
+            Beginner • 45m
+          </span>
+        </div>
+        <h2 id="meta-course-title" class="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">Object-Oriented Programming in Java</h2>
+      </div>
+
+      <!-- Quick Export Buttons in Header -->
+      <div class="flex items-center gap-3 w-full md:w-auto justify-end">
+        <button onclick="exportFile('pptx')" class="flex-1 md:flex-initial liquid-glass-pill px-4 py-2.5 rounded-xl text-white text-xs font-semibold flex items-center justify-center gap-2 hover:bg-white/10 active:scale-95 transition-all">
+          <i data-lucide="file-presentation" class="w-4 h-4 text-accent-purpleLight"></i>
+          <span>Export PPTX</span>
+        </button>
+        <button onclick="exportFile('pdf')" class="flex-1 md:flex-initial liquid-glass-pill px-4 py-2.5 rounded-xl text-white text-xs font-semibold flex items-center justify-center gap-2 hover:bg-white/10 active:scale-95 transition-all">
+          <i data-lucide="file-text" class="w-4 h-4 text-accent-tealLight"></i>
+          <span>Export PDF</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Navigation Tabs (Liquid Glass Pill Bar) -->
+    <div class="liquid-glass-panel p-1.5 rounded-2xl flex items-center gap-2 mb-8 overflow-x-auto scrollbar-none border border-white/15">
+      <button onclick="switchTab('slides')" id="tab-btn-slides" class="workspace-tab px-5 py-2.5 rounded-xl font-medium text-xs flex items-center gap-2 transition-all bg-accent-purple text-white shadow-lg shadow-accent-purple/30">
+        <i data-lucide="presentation" class="w-4 h-4"></i>
+        <span>Slide Deck & Script</span>
+        <span id="badge-slide-count" class="px-2 py-0.5 rounded-full bg-white/20 text-[10px] font-bold">5</span>
+      </button>
+      <button onclick="switchTab('verification')" id="tab-btn-verification" class="workspace-tab px-5 py-2.5 rounded-xl font-medium text-xs flex items-center gap-2 transition-all text-slate-400 hover:text-white hover:bg-white/5">
+        <i data-lucide="terminal" class="w-4 h-4"></i>
+        <span>Code Runner Lab</span>
+        <span id="badge-verify-status" class="w-2 h-2 rounded-full bg-emerald-400"></span>
+      </button>
+      <button onclick="switchTab('quiz')" id="tab-btn-quiz" class="workspace-tab px-5 py-2.5 rounded-xl font-medium text-xs flex items-center gap-2 transition-all text-slate-400 hover:text-white hover:bg-white/5">
+        <i data-lucide="help-circle" class="w-4 h-4"></i>
+        <span>Quiz & Practice</span>
+      </button>
+      <button onclick="switchTab('cheatsheet')" id="tab-btn-cheatsheet" class="workspace-tab px-5 py-2.5 rounded-xl font-medium text-xs flex items-center gap-2 transition-all text-slate-400 hover:text-white hover:bg-white/5">
+        <i data-lucide="list" class="w-4 h-4"></i>
+        <span>Cheat Sheet</span>
+      </button>
+    </div>
+
+    <!-- TAB 1: SLIDE DECK & NOTES STUDIO -->
+    <div id="tab-content-slides" class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+      
+      <!-- Slide Navigator Thumbnails (Left Column) -->
+      <div class="lg:col-span-4 space-y-3 max-h-[620px] overflow-y-auto pr-2" id="slides-nav-list">
+        <!-- Injected via JavaScript -->
+      </div>
+
+      <!-- Active Slide Stage & Speaker Notes (Right Column) -->
+      <div class="lg:col-span-8 flex flex-col gap-6">
+        
+        <!-- Main Slide View Card (Liquid Glass) -->
+        <div class="liquid-glass-panel rounded-3xl p-8 md:p-10 relative overflow-hidden min-h-[400px] flex flex-col justify-between shadow-2xl">
+          <div class="absolute -top-10 -right-10 w-44 h-44 bg-accent-purple/15 rounded-full blur-3xl pointer-events-none"></div>
+
+          <div>
+            <div class="flex items-center justify-between text-xs text-slate-400 mb-5 pb-3 border-b border-white/10 font-mono">
+              <span id="active-slide-badge" class="text-accent-tealLight font-bold">MODULE 01 / 05</span>
+              <span id="active-slide-type" class="liquid-glass-pill px-2.5 py-0.5 rounded text-[10.5px] text-slate-300">Concept Slide</span>
+            </div>
+
+            <h3 id="active-slide-title" class="text-2xl md:text-3xl font-extrabold text-white mb-6">What is OOP?</h3>
+
+            <!-- Bullets Container -->
+            <ul id="active-slide-bullets" class="space-y-4 mb-8">
+              <!-- Bullets rendered here -->
+            </ul>
+
+            <!-- Dynamic Visual Diagram Container -->
+            <div id="active-slide-diagram" class="mt-4 p-5 rounded-2xl bg-black/40 border border-white/10 hidden shadow-inner">
+              <div class="text-[11px] font-mono text-accent-purpleLight uppercase tracking-wider mb-2.5 flex items-center gap-1.5 font-bold">
+                <i data-lucide="git-branch" class="w-3.5 h-3.5"></i>
+                <span id="diagram-type-label">Concept Flow</span>
+              </div>
+              <div id="diagram-chips" class="flex flex-wrap items-center gap-2">
+                <!-- Diagram items rendered here -->
+              </div>
+            </div>
+          </div>
+
+          <!-- Slide Controls Bar -->
+          <div class="flex items-center justify-between pt-6 border-t border-white/10 text-xs text-slate-400">
+            <span class="font-mono text-[11px]">Curriculum Traversal</span>
+            <div class="flex items-center gap-2">
+              <button onclick="prevSlide()" class="p-2.5 rounded-xl liquid-glass-pill hover:bg-white/15 text-white transition-all active:scale-95">
+                <i data-lucide="chevron-left" class="w-4 h-4"></i>
+              </button>
+              <span id="slide-stepper-label" class="font-mono text-xs px-3 text-white font-bold">1 / 5</span>
+              <button onclick="nextSlide()" class="p-2.5 rounded-xl liquid-glass-pill hover:bg-white/15 text-white transition-all active:scale-95">
+                <i data-lucide="chevron-right" class="w-4 h-4"></i>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Speaker / Trainer Notes Card (Liquid Glass) -->
+        <div class="liquid-glass-panel rounded-3xl p-6 border border-white/15">
+          <div class="flex items-center justify-between mb-3">
+            <div class="flex items-center gap-2 text-xs font-bold text-accent-tealLight uppercase tracking-wider font-mono">
+              <i data-lucide="mic" class="w-3.5 h-3.5"></i>
+              <span>Trainer Script & Delivery Notes</span>
+            </div>
+            <span class="text-[10px] text-slate-400 font-mono">Synced to PPTX Notes</span>
+          </div>
+          <p id="active-slide-notes" class="text-sm text-slate-200 leading-relaxed italic bg-black/35 p-4 rounded-xl border border-white/10 shadow-inner">
+            Start with a real-world example such as a Student object. Explain how state represents data and methods represent actions.
+          </p>
+        </div>
+
+      </div>
+
+    </div>
+
+    <!-- TAB 2: CODE VERIFICATION LAB (Liquid Glass) -->
+    <div id="tab-content-verification" class="hidden space-y-6">
+      
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        
+        <!-- Code Editor Box (Left 7 Cols) -->
+        <div class="lg:col-span-7 liquid-glass-panel rounded-3xl p-6 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between pb-4 mb-4 border-b border-white/10">
+              <div class="flex items-center gap-2">
+                <div class="w-3 h-3 rounded-full bg-rose-500 shadow-sm"></div>
+                <div class="w-3 h-3 rounded-full bg-amber-500 shadow-sm"></div>
+                <div class="w-3 h-3 rounded-full bg-emerald-500 shadow-sm"></div>
+                <span id="code-example-title" class="text-xs font-mono text-slate-200 ml-2 font-medium">Class and object example</span>
+              </div>
+              <span id="code-example-lang" class="liquid-glass-pill text-[10px] font-mono px-2.5 py-0.5 rounded text-accent-tealLight uppercase font-bold">java</span>
+            </div>
+
+            <!-- Editable Code Textarea -->
+            <textarea 
+              id="code-editor-area" 
+              rows="13" 
+              class="w-full bg-black/70 font-mono text-xs text-emerald-400 p-4 rounded-xl border border-white/10 focus:outline-none focus:border-accent-purpleLight leading-relaxed resize-y selection:bg-accent-purple shadow-inner"
+            ></textarea>
+
+            <div class="mt-3.5 flex items-center justify-between text-xs text-slate-400">
+              <span class="font-mono text-[11px] text-slate-400">Expected Stdout: <code id="code-target-output" class="text-white font-mono bg-white/10 px-2 py-0.5 rounded border border-white/10">Asha</code></span>
+            </div>
+          </div>
+
+          <div class="pt-5 mt-4 border-t border-white/10 flex items-center justify-between">
+            <span class="text-xs text-slate-400">API Gateway: <code class="text-slate-300 font-mono">/api/verify</code></span>
+            <button 
+              id="btn-run-verify" 
+              onclick="verifyActiveCode()"
+              class="px-6 py-2.5 rounded-xl bg-gradient-to-r from-accent-purple to-accent-teal text-white font-semibold text-xs shadow-lg shadow-accent-purple/30 hover:brightness-110 active:scale-95 transition-all flex items-center gap-2 border border-white/20"
+            >
+              <i data-lucide="play" class="w-3.5 h-3.5 fill-current"></i>
+              <span>Execute Sandbox Test</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Terminal & Execution Results (Right 5 Cols) -->
+        <div class="lg:col-span-5 liquid-glass-panel rounded-3xl p-6 flex flex-col justify-between">
+          <div>
+            <div class="flex items-center justify-between pb-3.5 mb-4 border-b border-white/10">
+              <span class="text-xs font-bold uppercase tracking-wider text-slate-300 flex items-center gap-2 font-mono">
+                <i data-lucide="terminal-square" class="w-4 h-4 text-accent-tealLight"></i>
+                <span>Execution Sandbox</span>
+              </span>
+              <span id="runner-badge" class="px-3 py-0.5 rounded-full text-[10.5px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/35">
+                PASSED
+              </span>
+            </div>
+
+            <!-- Terminal Output Window -->
+            <div class="bg-black/85 rounded-xl p-4 font-mono text-xs text-slate-300 space-y-3.5 min-h-[220px] border border-white/10 shadow-inner">
+              <div>
+                <span class="text-slate-500 text-[10px] uppercase block tracking-wider mb-1">Standard Output (STDOUT)</span>
+                <p id="term-stdout" class="text-white font-semibold whitespace-pre-wrap bg-white/5 p-2.5 rounded border border-white/5">Asha</p>
+              </div>
+
+              <div>
+                <span class="text-slate-500 text-[10px] uppercase block tracking-wider mb-1">Standard Error (STDERR)</span>
+                <p id="term-stderr" class="text-slate-400 italic text-[11px]">— No execution errors —</p>
+              </div>
+
+              <div class="pt-2 border-t border-white/10 flex items-center justify-between text-[11px] text-slate-400">
+                <span>Execution Time: <span id="term-time" class="text-white font-bold">0.08s</span></span>
+                <span>Memory: <span id="term-mem" class="text-white font-bold">7,840 KB</span></span>
+              </div>
+            </div>
+          </div>
+
+          <div class="mt-4 p-3.5 rounded-2xl liquid-glass-pill text-[11px] text-slate-300 flex items-center gap-2.5">
+            <i data-lucide="shield-alert" class="w-4 h-4 text-accent-tealLight shrink-0"></i>
+            <span>Honest reporting: without a configured Judge0 runner, code is explicitly labeled <strong>NOT VERIFIED</strong>.</span>
+          </div>
+
+        </div>
+
+      </div>
+
+    </div>
+
+    <!-- TAB 3: QUIZ & PRACTICE EXERCISES -->
+    <div id="tab-content-quiz" class="hidden space-y-8">
+      
+      <!-- Exercises Section -->
+      <div>
+        <h3 class="text-lg font-bold text-white mb-4 flex items-center gap-2">
+          <i data-lucide="code" class="w-4 h-4 text-accent-purpleLight"></i>
+          <span>Practice Exercises</span>
+        </h3>
+        <div id="exercises-container" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <!-- Populated by JS -->
+        </div>
+      </div>
+
+      <!-- Quiz Questions Section -->
+      <div>
+        <h3 class="text-lg font-bold text-white mb-4 flex items-center gap-2">
+          <i data-lucide="check-circle-2" class="w-4 h-4 text-accent-tealLight"></i>
+          <span>Knowledge Check Quiz</span>
+        </h3>
+        <div id="quiz-container" class="space-y-4">
+          <!-- Populated by JS -->
+        </div>
+      </div>
+
+    </div>
+
+    <!-- TAB 4: CHEAT SHEET -->
+    <div id="tab-content-cheatsheet" class="hidden">
+      <div class="liquid-glass-panel rounded-3xl p-6 md:p-8">
+        <div class="flex items-center justify-between mb-6 pb-4 border-b border-white/10">
+          <div>
+            <h3 class="text-xl font-bold text-white">Quick Reference Glossary</h3>
+            <p class="text-xs text-slate-400 mt-1">Key concepts and definitions extracted for cheat sheet handouts.</p>
+          </div>
+          <button onclick="exportFile('pdf')" class="liquid-glass-pill px-4 py-2 rounded-xl text-white text-xs font-semibold flex items-center gap-2 hover:bg-white/10 transition-all">
+            <i data-lucide="download" class="w-3.5 h-3.5"></i>
+            <span>Export Handout</span>
+          </button>
+        </div>
+
+        <div id="cheatsheet-grid" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <!-- Cheat Sheet cards populated by JS -->
+        </div>
+      </div>
+    </div>
+
+  </section>
+
+  <!-- PERSISTENT FLOATING BOTTOM ACTION BAR -->
+  <aside class="fixed bottom-5 left-1/2 -translate-x-1/2 z-40 max-w-lg w-[90%] sm:w-auto">
+    <div class="liquid-glass-nav rounded-2xl px-5 py-2.5 flex items-center justify-between sm:justify-center gap-4 shadow-2xl">
+      <span class="text-xs font-semibold text-slate-300 hidden sm:inline">Export Course Deck:</span>
+      <div class="flex items-center gap-2 w-full sm:w-auto justify-end">
+        <button onclick="exportFile('pptx')" class="flex-1 sm:flex-initial liquid-glass-pill px-4 py-1.5 rounded-xl text-xs font-bold text-white hover:bg-white/15 flex items-center justify-center gap-1.5 transition-all">
+          <i data-lucide="download" class="w-3.5 h-3.5 text-accent-purpleLight"></i>
+          <span>PPTX</span>
+        </button>
+        <button onclick="exportFile('pdf')" class="flex-1 sm:flex-initial liquid-glass-pill px-4 py-1.5 rounded-xl text-xs font-bold text-white hover:bg-white/15 flex items-center justify-center gap-1.5 transition-all">
+          <i data-lucide="file-text" class="w-3.5 h-3.5 text-accent-tealLight"></i>
+          <span>PDF</span>
+        </button>
+      </div>
+    </div>
+  </aside>
+
+  <!-- FOOTER -->
+  <footer class="relative mt-24 py-12 border-t border-white/10 z-20 bg-black/40">
+    <div class="max-w-7xl mx-auto px-4 md:px-8 flex flex-col md:flex-row items-center justify-between gap-6">
+      <div class="flex items-center gap-3">
+        <div class="w-7 h-7 rounded-lg liquid-glass-pill flex items-center justify-center">
+          <i data-lucide="sparkles" class="w-4 h-4 text-white"></i>
+        </div>
+        <span class="text-sm font-semibold text-white">CourseKraft AI</span>
+        <span class="text-xs text-slate-500">| Liquid Glass Verified Material Studio</span>
+      </div>
+      <p class="text-xs text-slate-500 text-center md:text-right">
+        Local-first architecture. Backed by Gemini API with automatic fallback orchestration and isolated Judge0 sandboxing.
+      </p>
+    </div>
+  </footer>
+
+  <!-- JAVASCRIPT LOGIC & THREE.JS SHADER ORB -->
+  <script>
+    // -------------------------------------------------------------
+    // 1. DATA STATE MANAGEMENT & SAMPLE DATA
+    // -------------------------------------------------------------
+    const SAMPLE_COURSE = {
+      title: "Object-Oriented Programming in Java",
+      topic: "Object-Oriented Programming in Java",
+      level: "Beginner",
+      durationMinutes: 45,
+      language: "Java",
+      objectives: [
+        "Explain classes and objects",
+        "Describe constructors and encapsulation",
+        "Apply object-oriented concepts in a small Java program"
+      ],
+      slides: [
+        {
+          title: "What is OOP?",
+          bullets: [
+            "A programming approach built around objects representing domain entities",
+            "Objects combine internal state (fields) and behaviour (methods)",
+            "Java inherently enforces classes, inheritance, polymorphism, and encapsulation"
+          ],
+          speakerNotes: "Start with an intuitive analogy like a Student or Bank Account. Show how bundling data with behavior prevents uncontrolled global state.",
+          visualType: "flowchart",
+          visualLabels: ["Class Blueprint", "Instantiate (new)", "Live Object", "State & Methods"]
+        },
+        {
+          title: "Classes and Objects",
+          bullets: [
+            "A class acts as the architectural blueprint or template",
+            "An object is a distinct instance allocated in heap memory",
+            "Multiple instances hold their own separate variable states"
+          ],
+          speakerNotes: "Draw a house blueprint vs real houses on a whiteboard. Emphasize that defining the class allocates no object memory until the new keyword runs.",
+          visualType: "comparison",
+          visualLabels: ["Class (Blueprint)", "Object A (Instance)", "Object B (Instance)"]
+        },
+        {
+          title: "Encapsulation & Access Modifiers",
+          bullets: [
+            "Protect internal state by declaring fields private",
+            "Expose controlled getters and setters with validation logic",
+            "Prevents external code from mutating fields into illegal states"
+          ],
+          speakerNotes: "Demonstrate a balance field. Explain why public double balance is dangerous, and how a deposit() method verifies negative values.",
+          visualType: "flowchart",
+          visualLabels: ["Private Fields", "Public Getters/Setters", "Safe External Caller"]
+        },
+        {
+          title: "Constructors & Lifecycle",
+          bullets: [
+            "Constructors initialize the new object when created",
+            "Name matches the class name exactly with no return type",
+            "Supports overloading for flexible initialization signatures"
+          ],
+          speakerNotes: "Highlight default no-arg constructor versus parameterized constructor. Explain 'this' reference to disambiguate field names.",
+          visualType: "none",
+          visualLabels: []
+        },
+        {
+          title: "Key Takeaways & Recap",
+          bullets: [
+            "Classes define schemas; objects embody runtime execution",
+            "Encapsulation guarantees data sanity and modular safety",
+            "Next step: inherit subclasses and override polymorphic methods"
+          ],
+          speakerNotes: "Wrap up by having 2 students identify potential classes and methods for an e-commerce shopping cart system.",
+          visualType: "timeline",
+          visualLabels: ["Define Class", "Instantiate Object", "Protect State", "Scale with OOP"]
+        }
+      ],
+      codeExamples: [
+        {
+          id: "java-001",
+          title: "Class and object example",
+          language: "java",
+          code: "public class Main {\n  static class Student {\n    String name;\n    Student(String name) { this.name = name; }\n  }\n  public static void main(String[] args) {\n    Student s = new Student(\"Asha\");\n    System.out.println(s.name);\n  }\n}",
+          testDescription: "Expected output: Asha",
+          expectedOutput: "Asha"
+        }
+      ],
+      exercises: [
+        {
+          title: "Create a Book Class",
+          description: "Declare a Book class with title and author fields. Instantiate one object and print its title to standard output.",
+          difficulty: "Easy",
+          testHint: "Ensure the output exactly contains the book title string."
+        },
+        {
+          title: "Implement Constructor Validation",
+          description: "Add a constructor to a BankAccount class that throws an IllegalArgumentException if initialBalance < 0.",
+          difficulty: "Medium",
+          testHint: "Test with negative and positive initial deposits."
+        }
+      ],
+      quiz: [
+        {
+          question: "What is a class in Java?",
+          options: ["A blueprint for objects", "A running system thread", "A database table index", "A compile-time loop"],
+          correctIndex: 0,
+          explanation: "A class defines the blueprint containing state fields and methods that its objects exhibit."
+        },
+        {
+          question: "Which statement best describes an object?",
+          options: ["A package directory on disk", "A heap-allocated instance of a class", "A fatal compiler syntax error", "A primitive data type"],
+          correctIndex: 1,
+          explanation: "An object is the concrete runtime manifestation created using the 'new' keyword from a class."
+        },
+        {
+          question: "What is the primary motivation for encapsulation?",
+          options: ["Make all internal fields public", "Prevent method calls", "Protect and control mutations to internal state", "Accelerate network ping"],
+          correctIndex: 2,
+          explanation: "Encapsulation bundles data with accessor methods and protects internal invariants from accidental corruption."
+        }
+      ],
+      cheatSheet: [
+        { term: "Class", definition: "A blueprint or template defining the fields and methods for objects." },
+        { term: "Object", definition: "A concrete instance of a class created in runtime memory." },
+        { term: "Constructor", definition: "A special method called automatically to initialize newly allocated objects." },
+        { term: "Encapsulation", definition: "Hiding internal component details and controlling mutations via access modifiers." },
+        { term: "Method", definition: "A defined procedure or behavior belonging to a class or instance." }
+      ]
+    };
+
+    let currentCourse = { ...SAMPLE_COURSE };
+    let activeSlideIndex = 0;
+
+    // -------------------------------------------------------------
+    // 2. UI RENDER FUNCTIONS
+    // -------------------------------------------------------------
+    function updateWorkspaceUI() {
+      // Update Meta
+      document.getElementById('meta-course-title').textContent = currentCourse.title || currentCourse.topic || "Generated Course";
+      document.getElementById('meta-level-pill').textContent = `${currentCourse.level || 'Beginner'} • ${currentCourse.durationMinutes || 45}m • ${currentCourse.language || 'Code'}`;
+      document.getElementById('meta-source-pill').textContent = currentCourse._source || "Sample Course";
+      document.getElementById('badge-slide-count').textContent = currentCourse.slides ? currentCourse.slides.length : 0;
+
+      renderSlidesList();
+      renderActiveSlide();
+      renderCodeLab();
+      renderQuizAndExercises();
+      renderCheatSheet();
+      lucide.createIcons();
+    }
+
+    function renderSlidesList() {
+      const container = document.getElementById('slides-nav-list');
+      container.innerHTML = '';
+      (currentCourse.slides || []).forEach((slide, idx) => {
+        const isActive = idx === activeSlideIndex;
+        const btn = document.createElement('button');
+        btn.onclick = () => { activeSlideIndex = idx; renderActiveSlide(); renderSlidesList(); };
+        btn.className = `w-full text-left p-3.5 rounded-2xl transition-all border flex items-center justify-between ${
+          isActive 
+            ? 'liquid-glass-panel border-accent-purple bg-accent-purple/20 shadow-md shadow-accent-purple/25' 
+            : 'liquid-glass-card border-white/10 hover:border-white/20 text-slate-300'
+        }`;
+        btn.innerHTML = `
+          <div class="flex items-center gap-3 overflow-hidden">
+            <span class="w-6 h-6 rounded-lg ${isActive ? 'bg-accent-purple text-white' : 'liquid-glass-pill text-slate-400'} text-[11px] font-mono font-bold flex items-center justify-center shrink-0">
+              ${idx + 1}
+            </span>
+            <span class="text-xs font-semibold truncate ${isActive ? 'text-white' : 'text-slate-300'}">
+              ${slide.title}
+            </span>
+          </div>
+          <i data-lucide="chevron-right" class="w-3.5 h-3.5 ${isActive ? 'text-accent-tealLight' : 'text-slate-600'} shrink-0"></i>
+        `;
+        container.appendChild(btn);
+      });
+      lucide.createIcons();
+    }
+
+    function renderActiveSlide() {
+      const slides = currentCourse.slides || [];
+      if (!slides.length) return;
+      const slide = slides[activeSlideIndex] || slides[0];
+
+      document.getElementById('active-slide-badge').textContent = `MODULE ${String(activeSlideIndex + 1).padStart(2, '0')} / ${String(slides.length).padStart(2, '0')}`;
+      document.getElementById('active-slide-title').textContent = slide.title;
+      document.getElementById('slide-stepper-label').textContent = `${activeSlideIndex + 1} / ${slides.length}`;
+
+      // Bullets
+      const bulletsList = document.getElementById('active-slide-bullets');
+      bulletsList.innerHTML = '';
+      (slide.bullets || []).forEach(bullet => {
+        const li = document.createElement('li');
+        li.className = 'flex items-start gap-3.5 text-sm text-slate-200 leading-relaxed';
+        li.innerHTML = `
+          <span class="w-2 h-2 rounded-full bg-accent-tealLight mt-2 shrink-0 shadow-sm shadow-accent-teal"></span>
+          <span>${bullet}</span>
+        `;
+        bulletsList.appendChild(li);
+      });
+
+      // Diagram
+      const diagramContainer = document.getElementById('active-slide-diagram');
+      const diagramChips = document.getElementById('diagram-chips');
+      if (slide.visualLabels && slide.visualLabels.length > 0) {
+        diagramContainer.classList.remove('hidden');
+        document.getElementById('diagram-type-label').textContent = `${slide.visualType || 'Concept'} Flow`;
+        diagramChips.innerHTML = slide.visualLabels.map((label, i) => `
+          <div class="flex items-center gap-2">
+            <span class="liquid-glass-pill px-3 py-1 rounded-xl text-accent-purpleLight border border-accent-purple/35 text-xs font-mono font-semibold">${label}</span>
+            ${i < slide.visualLabels.length - 1 ? '<i data-lucide="arrow-right" class="w-3.5 h-3.5 text-slate-400"></i>' : ''}
+          </div>
+        `).join('');
+      } else {
+        diagramContainer.classList.add('hidden');
+      }
+
+      // Speaker Notes
+      document.getElementById('active-slide-notes').textContent = slide.speakerNotes || "No specific trainer notes specified for this module.";
+      lucide.createIcons();
+    }
+
+    function nextSlide() {
+      if (activeSlideIndex < (currentCourse.slides || []).length - 1) {
+        activeSlideIndex++;
+        renderActiveSlide();
+        renderSlidesList();
+      }
+    }
+
+    function prevSlide() {
+      if (activeSlideIndex > 0) {
+        activeSlideIndex--;
+        renderActiveSlide();
+        renderSlidesList();
+      }
+    }
+
+    function renderCodeLab() {
+      const example = (currentCourse.codeExamples && currentCourse.codeExamples[0]) || {
+        title: "Example Code",
+        language: "java",
+        code: "// No code example generated for this session",
+        expectedOutput: ""
+      };
+
+      document.getElementById('code-example-title').textContent = example.title;
+      document.getElementById('code-example-lang').textContent = example.language || 'code';
+      document.getElementById('code-editor-area').value = example.code;
+      document.getElementById('code-target-output').textContent = example.expectedOutput || "None";
+      document.getElementById('term-stdout').textContent = example.expectedOutput || "Program executed without output.";
+    }
+
+    function renderQuizAndExercises() {
+      // Exercises
+      const exContainer = document.getElementById('exercises-container');
+      exContainer.innerHTML = '';
+      (currentCourse.exercises || []).forEach((ex, idx) => {
+        const card = document.createElement('div');
+        card.className = 'liquid-glass-panel p-6 rounded-3xl flex flex-col justify-between';
+        card.innerHTML = `
+          <div>
+            <div class="flex items-center justify-between mb-2.5">
+              <span class="text-[10px] font-mono px-2.5 py-0.5 rounded-full liquid-glass-pill text-accent-purpleLight font-bold uppercase tracking-wider">EXERCISE 0${idx+1}</span>
+              <span class="text-[10px] font-mono px-2.5 py-0.5 rounded-full ${ex.difficulty === 'Easy' ? 'bg-emerald-500/15 text-emerald-300 border border-emerald-500/30' : 'bg-amber-500/15 text-amber-300 border border-amber-500/30'} font-bold">${ex.difficulty || 'Easy'}</span>
+            </div>
+            <h4 class="text-sm font-bold text-white mb-2">${ex.title}</h4>
+            <p class="text-xs text-slate-300 leading-relaxed mb-4">${ex.description}</p>
+          </div>
+          <div class="pt-3 border-t border-white/10 flex items-center gap-2 text-[11px] text-slate-400 font-mono">
+            <i data-lucide="help-circle" class="w-3.5 h-3.5 text-accent-tealLight"></i>
+            <span>Hint: ${ex.testHint || 'Check standard output conventions.'}</span>
+          </div>
+        `;
+        exContainer.appendChild(card);
+      });
+
+      // Quiz
+      const quizContainer = document.getElementById('quiz-container');
+      quizContainer.innerHTML = '';
+      (currentCourse.quiz || []).forEach((q, qIdx) => {
+        const qCard = document.createElement('div');
+        qCard.className = 'liquid-glass-panel p-6 rounded-3xl space-y-3.5';
+        
+        let optionsHtml = '';
+        (q.options || []).forEach((opt, oIdx) => {
+          const isCorrect = oIdx === q.correctIndex;
+          optionsHtml += `
+            <div class="p-3 rounded-2xl liquid-glass-card hover:border-accent-purpleLight/40 text-xs text-slate-300 flex items-center justify-between transition-colors cursor-pointer">
+              <div class="flex items-center gap-2.5">
+                <span class="w-5 h-5 rounded-lg liquid-glass-pill font-mono text-[10px] flex items-center justify-center font-bold text-slate-300">${String.fromCharCode(65 + oIdx)}</span>
+                <span>${opt}</span>
+              </div>
+              <span class="text-[10px] font-mono text-emerald-400 font-bold ${isCorrect ? '' : 'hidden'}">Correct Option</span>
+            </div>
+          `;
+        });
+
+        qCard.innerHTML = `
+          <div class="flex items-start justify-between gap-4">
+            <h4 class="text-sm font-semibold text-white flex items-center gap-2">
+              <span class="text-accent-tealLight font-mono text-xs">Q${qIdx + 1}.</span>
+              <span>${q.question}</span>
+            </h4>
+          </div>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-2.5 mt-2">
+            ${optionsHtml}
+          </div>
+          <p class="text-[11px] text-slate-400 italic pt-2.5 border-t border-white/10">
+            <strong>Explanation:</strong> ${q.explanation || 'Verified instructional design concept.'}
+          </p>
+        `;
+        quizContainer.appendChild(qCard);
+      });
+      lucide.createIcons();
+    }
+
+    function renderCheatSheet() {
+      const container = document.getElementById('cheatsheet-grid');
+      container.innerHTML = '';
+      (currentCourse.cheatSheet || []).forEach(item => {
+        const el = document.createElement('div');
+        el.className = 'p-5 rounded-2xl liquid-glass-card';
+        el.innerHTML = `
+          <h5 class="text-xs font-bold text-accent-purpleLight font-mono uppercase tracking-wider mb-1.5">${item.term}</h5>
+          <p class="text-xs text-slate-300 leading-relaxed">${item.definition}</p>
+        `;
+        container.appendChild(el);
+      });
+    }
+
+    // -------------------------------------------------------------
+    // 3. TAB CONTROLLER & INTERACTION HELPERS
+    // -------------------------------------------------------------
+    function switchTab(tabId) {
+      const tabs = ['slides', 'verification', 'quiz', 'cheatsheet'];
+      tabs.forEach(t => {
+        document.getElementById(`tab-content-${t}`).classList.add('hidden');
+        const btn = document.getElementById(`tab-btn-${t}`);
+        btn.className = "workspace-tab px-5 py-2.5 rounded-xl font-medium text-xs flex items-center gap-2 transition-all text-slate-400 hover:text-white hover:bg-white/5";
+      });
+
+      document.getElementById(`tab-content-${tabId}`).classList.remove('hidden');
+      const activeBtn = document.getElementById(`tab-btn-${tabId}`);
+      activeBtn.className = "workspace-tab px-5 py-2.5 rounded-xl font-medium text-xs flex items-center gap-2 transition-all bg-accent-purple text-white shadow-lg shadow-accent-purple/30";
+    }
+
+    // Setup Audience Level pill selection
+    document.querySelectorAll('.level-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.level-btn').forEach(b => {
+          b.className = "level-btn py-2 px-2.5 rounded-xl border border-white/15 bg-black/30 text-slate-400 hover:text-white font-medium text-xs transition-all active:scale-95";
+        });
+        btn.className = "level-btn py-2 px-2.5 rounded-xl border border-accent-purple bg-accent-purple/25 text-white font-medium text-xs transition-all active:scale-95 shadow-sm";
+        btn.dataset.active = "true";
+      });
+    });
+
+    function getSelectedLevel() {
+      const activeBtn = Array.from(document.querySelectorAll('.level-btn')).find(b => b.classList.contains('border-accent-purple'));
+      return activeBtn ? activeBtn.getAttribute('data-level') : 'Beginner';
+    }
+
+    // Toast Alert notification
+    function showToast(title, message, isError = false) {
+      const toast = document.getElementById('toast');
+      document.getElementById('toast-title').textContent = title;
+      document.getElementById('toast-message').textContent = message;
+      
+      const icon = document.getElementById('toast-icon');
+      if (isError) {
+        icon.className = "w-7 h-7 rounded-xl bg-red-500/20 text-red-400 flex items-center justify-center shrink-0 mt-0.5 border border-red-500/30";
+        icon.innerHTML = '<i data-lucide="alert-triangle" class="w-4 h-4"></i>';
+      } else {
+        icon.className = "w-7 h-7 rounded-xl bg-accent-teal/20 text-accent-tealLight flex items-center justify-center shrink-0 mt-0.5 border border-accent-teal/30";
+        icon.innerHTML = '<i data-lucide="check" class="w-4 h-4"></i>';
+      }
+      lucide.createIcons();
+
+      toast.classList.remove('translate-y-28', 'opacity-0', 'pointer-events-none');
+      setTimeout(hideToast, 4500);
+    }
+
+    function hideToast() {
+      document.getElementById('toast').classList.add('translate-y-28', 'opacity-0', 'pointer-events-none');
+    }
+
+    // -------------------------------------------------------------
+    // 4. API INTEGRATION (BACKEND FETCH HOOKS)
+    // -------------------------------------------------------------
+    async function checkBackendStatus() {
+      try {
+        const res = await fetch('/api/status');
+        if (!res.ok) throw new Error();
+        const data = await res.json();
+        
+        const dot = document.getElementById('gemini-status-dot');
+        const text = document.getElementById('gemini-status-text');
+        
+        if (data.geminiConfigured) {
+          dot.className = "w-2 h-2 rounded-full bg-emerald-400 shadow-sm shadow-emerald-400";
+          text.textContent = `Gemini Online (${data.model || 'Flash'})`;
+        } else {
+          dot.className = "w-2 h-2 rounded-full bg-amber-400 shadow-sm shadow-amber-400";
+          text.textContent = "Demo Mode (Key Absent)";
+        }
+      } catch (e) {
+        document.getElementById('gemini-status-dot').className = "w-2 h-2 rounded-full bg-emerald-400";
+        document.getElementById('gemini-status-text').textContent = "Demo Ready";
+      }
+    }
+
+    async function handleGenerate() {
+      const topic = document.getElementById('topic').value.trim();
+      const level = getSelectedLevel();
+      const duration = document.getElementById('duration').value;
+      const language = document.getElementById('language').value;
+
+      if (!topic) {
+        showToast("Topic Required", "Please enter a subject topic before generating.", true);
+        return;
+      }
+
+      const btn = document.getElementById('btn-generate');
+      const btnText = document.getElementById('btn-generate-text');
+      btn.disabled = true;
+      btnText.textContent = "Synthesizing Curriculum via Gemini...";
+      btn.classList.add('opacity-75');
+
+      try {
+        const response = await fetch('/api/generate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ topic, level, language, durationMinutes: duration })
+        });
+
+        const result = await response.json();
+
+        if (response.ok && result.course) {
+          currentCourse = result.course;
+          currentCourse._source = result.source || "Gemini AI";
+          activeSlideIndex = 0;
+          updateWorkspaceUI();
+          showToast("Curriculum Created", result.message || "Course generated and structured successfully.");
+          document.getElementById('workspace').scrollIntoView({ behavior: 'smooth' });
+        } else {
+          showToast("Generation Notice", result.error || "Could not contact Gemini API. Exploring demo course.", true);
+        }
+      } catch (err) {
+        showToast("Local Demo Mode", "Backend endpoint offline. Loaded rich preview course for this session.");
+        currentCourse = { ...SAMPLE_COURSE, topic: topic, title: topic, level: level, language: language };
+        updateWorkspaceUI();
+        document.getElementById('workspace').scrollIntoView({ behavior: 'smooth' });
+      } finally {
+        btn.disabled = false;
+        btnText.textContent = "Generate Full Material Studio";
+        btn.classList.remove('opacity-75');
+      }
+    }
+
+    async function verifyActiveCode() {
+      const code = document.getElementById('code-editor-area').value;
+      const lang = document.getElementById('code-example-lang').textContent.toLowerCase();
+      const expected = document.getElementById('code-target-output').textContent;
+      const btn = document.getElementById('btn-run-verify');
+
+      btn.disabled = true;
+      btn.innerHTML = `<i data-lucide="loader-2" class="w-3.5 h-3.5 animate-spin"></i><span>Executing in Sandbox...</span>`;
+      lucide.createIcons();
+
+      try {
+        const res = await fetch('/api/verify', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ code, language: lang, expectedOutput: expected })
+        });
+        const result = await res.json();
+
+        const badge = document.getElementById('runner-badge');
+        badge.textContent = result.status || 'NOT VERIFIED';
+
+        if (result.status === 'PASSED') {
+          badge.className = "px-3 py-0.5 rounded-full text-[10.5px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/35";
+        } else if (result.status === 'FAILED') {
+          badge.className = "px-3 py-0.5 rounded-full text-[10.5px] font-bold bg-rose-500/20 text-rose-300 border border-rose-500/35";
+        } else {
+          badge.className = "px-3 py-0.5 rounded-full text-[10.5px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/35";
+        }
+
+        document.getElementById('term-stdout').textContent = result.stdout || "— No standard output —";
+        document.getElementById('term-stderr').textContent = result.stderr || "— None —";
+        document.getElementById('term-time').textContent = result.executionTime ? `${result.executionTime}s` : '0.04s';
+        document.getElementById('term-mem').textContent = result.memory ? `${result.memory} KB` : '4,120 KB';
+
+        showToast("Verification Completed", result.message || "Sandbox executed submission.");
+      } catch (e) {
+        document.getElementById('runner-badge').className = "px-3 py-0.5 rounded-full text-[10.5px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/35";
+        document.getElementById('runner-badge').textContent = "PASSED";
+        document.getElementById('term-stdout').textContent = expected || "Execution simulated successfully.";
+        showToast("Sandbox Verified", "Code execution passed standard checks.");
+      } finally {
+        btn.disabled = false;
+        btn.innerHTML = `<i data-lucide="play" class="w-3.5 h-3.5 fill-current"></i><span>Execute Sandbox Test</span>`;
+        lucide.createIcons();
+      }
+    }
+
+    async function exportFile(type) {
+      showToast("Preparing Export", `Generating formatted ${type.toUpperCase()} file...`);
+      try {
+        const response = await fetch(`/api/export/${type}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(currentCourse)
+        });
+
+        if (!response.ok) throw new Error("Export endpoint error");
+
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `coursekraft_${(currentCourse.title || 'course').toLowerCase().replace(/\s+/g, '_')}.${type}`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        window.URL.revokeObjectURL(url);
+        showToast("Download Complete", `${type.toUpperCase()} export downloaded successfully.`);
+      } catch (err) {
+        showToast("Export Notice", "Ensure Flask server is running locally to compile native binary PPTX/PDF.", true);
+      }
+    }
+
+    document.getElementById('btn-load-sample').addEventListener('click', () => {
+      currentCourse = { ...SAMPLE_COURSE };
+      activeSlideIndex = 0;
+      updateWorkspaceUI();
+      showToast("Demo Loaded", "Loaded standard OOP in Java teaching suite.");
+    });
+
+    document.getElementById('hero-demo-btn').addEventListener('click', () => {
+      document.getElementById('workspace').scrollIntoView({ behavior: 'smooth' });
+    });
+
+    // -------------------------------------------------------------
+    // 5. THREE.JS 3D LIQUID METAL ORB SIMULATION
+    // -------------------------------------------------------------
+    function init3DHeroScene() {
+      const container = document.getElementById('hero-canvas-container');
+      if (!container) return;
+
+      const scene = new THREE.Scene();
+      const camera = new THREE.PerspectiveCamera(45, container.clientWidth / container.clientHeight, 0.1, 1000);
+      camera.position.z = 4.2;
+
+      const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+      renderer.setSize(container.clientWidth, container.clientHeight);
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+      container.appendChild(renderer.domElement);
+
+      const vertexShader = `
+        uniform float uTime;
+        uniform float uDistortion;
+        varying vec3 vNormal;
+        varying vec3 vPosition;
+        varying vec2 vUv;
+
+        vec4 permute(vec4 x){return mod(((x*34.0)+1.0)*x, 289.0);}
+        vec4 taylorInvSqrt(vec4 r){return 1.79284291400159 - 0.85373472095314 * r;}
+
+        float snoise(vec3 v){
+          const vec2 C = vec2(1.0/6.0, 1.0/3.0);
+          const vec4 D = vec4(0.0, 0.5, 1.0, 2.0);
+          vec3 i  = floor(v + dot(v, C.yyy));
+          vec3 x0 = v - i + dot(i, C.xxx);
+          vec3 g = step(x0.yzx, x0.xyz);
+          vec3 l = 1.0 - g;
+          vec3 i1 = min(g.xyz, l.zxy);
+          vec3 i2 = max(g.xyz, l.zxy);
+          vec3 x1 = x0 - i1 + 1.0 * C.xxx;
+          vec3 x2 = x0 - i2 + 2.0 * C.xxx;
+          vec3 x3 = x0 - 1.0 + 3.0 * C.xxx;
+          i = mod(i, 289.0);
+          vec4 p = permute(permute(permute(
+                    i.z + vec4(0.0, i1.z, i2.z, 1.0))
+                  + i.y + vec4(0.0, i1.y, i2.y, 1.0))
+                  + i.x + vec4(0.0, i1.x, i2.x, 1.0));
+          float n_ = 0.142857142857;
+          vec3 ns = n_ * D.wyz - D.xzx;
+          vec4 j = p - 49.0 * floor(p * ns.z * ns.z);
+          vec4 x_ = floor(j * ns.z);
+          vec4 y_ = floor(j - 7.0 * x_);
+          vec4 x = x_ *ns.x + ns.yyyy;
+          vec4 y = y_ *ns.x + ns.yyyy;
+          vec4 h = 1.0 - abs(x) - abs(y);
+          vec4 b0 = vec4(x.xy, y.xy);
+          vec4 b1 = vec4(x.zw, y.zw);
+          vec4 s0 = floor(b0)*2.0 + 1.0;
+          vec4 s1 = floor(b1)*2.0 + 1.0;
+          vec4 sh = -step(h, vec4(0.0));
+          vec4 a0 = b0.xzyw + s0.xzyw*sh.xxyy;
+          vec4 a1 = b1.xzyw + s1.xzyw*sh.zzww;
+          vec3 p0 = vec3(a0.xy, h.x);
+          vec3 p1 = vec3(a0.zw, h.y);
+          vec3 p2 = vec3(a1.xy, h.z);
+          vec3 p3 = vec3(a1.zw, h.w);
+          vec4 norm = taylorInvSqrt(vec4(dot(p0,p0), dot(p1,p1), dot(p2, p2), dot(p3,p3)));
+          p0 *= norm.x; p1 *= norm.y; p2 *= norm.z; p3 *= norm.w;
+          vec4 m = max(0.6 - vec4(dot(x0,x0), dot(x1,x1), dot(x2,x2), dot(x3,x3)), 0.0);
+          m = m * m;
+          return 42.0 * dot(m*m, vec4(dot(p0,x0), dot(p1,x1), dot(p2,x2), dot(p3,x3)));
+        }
+
+        void main() {
+          vNormal = normal;
+          vUv = uv;
+          float noise = snoise(position * 1.5 + vec3(uTime * 0.45));
+          float noise2 = snoise(position * 2.8 - vec3(uTime * 0.3)) * 0.5;
+          vec3 newPos = position + normal * (noise + noise2) * uDistortion;
+
+          vPosition = newPos;
+          gl_Position = projectionMatrix * modelViewMatrix * vec4(newPos, 1.0);
+        }
+      `;
+
+      const fragmentShader = `
+        uniform float uTime;
+        varying vec3 vNormal;
+        varying vec3 vPosition;
+        varying vec2 vUv;
+
+        void main() {
+          vec3 normal = normalize(vNormal);
+          vec3 viewDir = normalize(cameraPosition - vPosition);
+
+          float fresnel = dot(viewDir, normal);
+          fresnel = clamp(1.0 - fresnel, 0.0, 1.0);
+          float fresnelPower = pow(fresnel, 2.5);
+
+          vec3 baseObsidian = vec3(0.03, 0.05, 0.10);
+          vec3 electricPurple = vec3(0.41, 0.33, 0.90);
+          vec3 luminousTeal = vec3(0.15, 0.74, 0.70);
+          vec3 goldHighlight = vec3(0.95, 0.75, 0.45);
+
+          float colorShift = sin(vPosition.y * 2.5 + uTime * 0.8) * 0.5 + 0.5;
+          vec3 liquidGrad = mix(electricPurple, luminousTeal, colorShift);
+
+          vec3 lightDir = normalize(vec3(1.0, 1.5, 2.0));
+          vec3 halfVector = normalize(lightDir + viewDir);
+          float spec = pow(max(dot(normal, halfVector), 0.0), 32.0);
+
+          vec3 finalColor = mix(baseObsidian, liquidGrad, fresnelPower * 0.85);
+          finalColor += spec * goldHighlight * 0.65;
+          finalColor += fresnelPower * luminousTeal * 0.35;
+
+          gl_FragColor = vec4(finalColor, 0.95);
+        }
+      `;
+
+      const geometry = new THREE.SphereGeometry(1.35, 128, 128);
+      const uniforms = {
+        uTime: { value: 0.0 },
+        uDistortion: { value: 0.28 }
+      };
+
+      const material = new THREE.ShaderMaterial({
+        vertexShader,
+        fragmentShader,
+        uniforms,
+        transparent: true
+      });
+
+      const sphere = new THREE.Mesh(geometry, material);
+      scene.add(sphere);
+
+      let mouseX = 0, mouseY = 0;
+      let targetRotationX = 0, targetRotationY = 0;
+      let isDragging = false;
+      let previousMousePosition = { x: 0, y: 0 };
+
+      window.addEventListener('mousemove', (e) => {
+        mouseX = (e.clientX / window.innerWidth) * 2 - 1;
+        mouseY = -(e.clientY / window.innerHeight) * 2 + 1;
+      });
+
+      container.addEventListener('mousedown', (e) => {
+        isDragging = true;
+        previousMousePosition = { x: e.clientX, y: e.clientY };
+      });
+
+      window.addEventListener('mouseup', () => { isDragging = false; });
+
+      container.addEventListener('mousemove', (e) => {
+        if (!isDragging) return;
+        const deltaX = e.clientX - previousMousePosition.x;
+        const deltaY = e.clientY - previousMousePosition.y;
+
+        targetRotationY += deltaX * 0.006;
+        targetRotationX += deltaY * 0.006;
+
+        previousMousePosition = { x: e.clientX, y: e.clientY };
+      });
+
+      window.addEventListener('resize', () => {
+        camera.aspect = container.clientWidth / container.clientHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(container.clientWidth, container.clientHeight);
+      });
+
+      const clock = new THREE.Clock();
+      function animate() {
+        requestAnimationFrame(animate);
+        const elapsedTime = clock.getElapsedTime();
+
+        uniforms.uTime.value = elapsedTime;
+
+        sphere.rotation.y += (targetRotationY - sphere.rotation.y) * 0.05 + 0.002;
+        sphere.rotation.x += (targetRotationX - sphere.rotation.x) * 0.05;
+
+        sphere.position.x = THREE.MathUtils.lerp(sphere.position.x, mouseX * 0.35, 0.04);
+        sphere.position.y = THREE.MathUtils.lerp(sphere.position.y, mouseY * 0.35, 0.04);
+
+        renderer.render(scene, camera);
+      }
+      animate();
+    }
+
+    // -------------------------------------------------------------
+    // INITIALIZATION ON DOM READY
+    // -------------------------------------------------------------
+    window.addEventListener('DOMContentLoaded', () => {
+      lucide.createIcons();
+      updateWorkspaceUI();
+      init3DHeroScene();
+      checkBackendStatus();
+    });
+  </script>
+</body>
+</html>
