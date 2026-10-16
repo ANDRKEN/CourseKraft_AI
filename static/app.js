@@ -512,16 +512,57 @@ async function downloadExport(kind, button) {
       try { const data = await response.json(); message = data.error || message; } catch { /* Keep status message. */ }
       throw new Error(message);
     }
-    const blob = await response.blob();
-    const objectUrl = URL.createObjectURL(blob);
+
+    // Determine filename: prefer Content-Disposition from server, fallback to sanitized course title
+    let filename = "";
+    const disposition = response.headers.get("Content-Disposition") || response.headers.get("content-disposition");
+    if (disposition) {
+      const match = disposition.match(/filename\*?=['"]?(?:UTF-\d['"]*)?([^;\r\n"']*)['"]?/i);
+      if (match && match[1]) filename = decodeURIComponent(match[1].trim());
+    }
+    if (!filename || !filename.endsWith(`.${kind}`)) {
+      const cleanTitle = (state.course?.title || "coursekraft_course")
+        .trim()
+        .replace(/[^a-zA-Z0-9_-]+/g, "_")
+        .replace(/^_+|_+$/g, "") || "coursekraft_course";
+      filename = `${cleanTitle}.${kind}`;
+    }
+
+    const mimeType = kind === "pdf"
+      ? "application/pdf"
+      : "application/vnd.openxmlformats-officedocument.presentationml.presentation";
+
+    const rawBlob = await response.blob();
+
+    // Use File constructor so Chromium/Edge embeds filename directly in object metadata
+    let downloadItem;
+    try {
+      downloadItem = new File([rawBlob], filename, { type: mimeType });
+    } catch {
+      downloadItem = new Blob([rawBlob], { type: mimeType });
+    }
+
+    const objectUrl = URL.createObjectURL(downloadItem);
     const anchor = document.createElement("a");
+    anchor.style.position = "fixed";
+    anchor.style.left = "-9999px";
+    anchor.style.opacity = "0";
     anchor.href = objectUrl;
-    anchor.download = kind === "pdf" ? "coursekraft_course.pdf" : "coursekraft_course.pptx";
+    anchor.download = filename;
+    anchor.setAttribute("download", filename);
     document.body.appendChild(anchor);
+
+    // Trigger download with click
     anchor.click();
-    anchor.remove();
-    window.setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
-    toast(`${kind.toUpperCase()} export downloaded`);
+
+    // Do NOT revoke immediately! Keep URL valid for 2 minutes so Edge SmartScreen
+    // has time to inspect the file without reverting the filename to a blob UUID
+    window.setTimeout(() => {
+      anchor.remove();
+      URL.revokeObjectURL(objectUrl);
+    }, 120000);
+
+    toast(`${kind.toUpperCase()} export downloaded as ${filename}`);
   } catch (error) {
     toast(error.message);
   } finally {

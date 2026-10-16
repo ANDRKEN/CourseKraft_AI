@@ -212,23 +212,38 @@ async def verify():
     )
     return jsonify(result)
 
+def _safe_export_filename(course, ext):
+    if not isinstance(course, dict):
+        return f"coursekraft_course.{ext}"
+    title = str(course.get("title") or "coursekraft_course").strip()
+    clean = "".join(c if c.isalnum() or c in ("-", "_") else "_" for c in title).strip("_")
+    return f"{clean or 'coursekraft_course'}.{ext}"
+
 def validate_export_course(course):
     return validate_course(course)
 
 @app.route("/api/export/pptx", methods=["POST"])
 def export_pptx():
     course = request.get_json(silent=True)
+    if not course and request.form.get("course"):
+        try:
+            course = json.loads(request.form.get("course"))
+        except Exception:
+            course = None
     error = validate_export_course(course)
     if error:
         return jsonify({"error":error}), 400
     try:
         output = create_pptx(course)
-        return send_file(
+        filename = _safe_export_filename(course, "pptx")
+        response = send_file(
             output,
             as_attachment=True,
-            download_name="coursekraft_course.pptx",
+            download_name=filename,
             mimetype="application/vnd.openxmlformats-officedocument.presentationml.presentation",
         )
+        response.headers["Access-Control-Expose-Headers"] = "Content-Disposition"
+        return response
     except Exception:
         return jsonify({"error":"PowerPoint export failed. Check the course content and installed requirements, then retry."}), 500
 
@@ -236,17 +251,25 @@ def export_pptx():
 @app.route("/api/export/pdf", methods=["POST"])
 def export_pdf():
     course = request.get_json(silent=True)
+    if not course and request.form.get("course"):
+        try:
+            course = json.loads(request.form.get("course"))
+        except Exception:
+            course = None
     error = validate_export_course(course)
     if error:
         return jsonify({"error":error}), 400
     try:
         output = create_pdf(course)
-        return send_file(
+        filename = _safe_export_filename(course, "pdf")
+        response = send_file(
             output,
             as_attachment=True,
-            download_name="coursekraft_course.pdf",
+            download_name=filename,
             mimetype="application/pdf",
         )
+        response.headers["Access-Control-Expose-Headers"] = "Content-Disposition"
+        return response
     except Exception:
         return jsonify({"error":"PDF export failed. Check the course content and installed requirements, then retry."}), 500
 if __name__ == "__main__":
