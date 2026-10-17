@@ -1,0 +1,16 @@
+services:
+  - type: web
+    name: coursekraft-ai
+    runtime: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: python app.py
+    plan: free
+    envVars:
+      - key: GEMINI_API_KEY
+        value: AQ.Ab8RN6IioflNkbVPGA1k6ijey4-IvPJAMlDV3drVbnPOorbZ_w
+      - key: DATABASE_URL
+        value: postgresql://neondb_owner:npg_Autpqi8mxr0f@ep-young-waterfall-a15odmxo-pooler.ap-southeast-1.aws.neon.tech/neondb?sslmode=require
+      - key: ONLINECOMPILER_API_KEY
+        value: 438b6105aaa851973daed771de945a48
+      - key: PORT
+        value: 10000
