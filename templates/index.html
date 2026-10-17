@@ -13,7 +13,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@400;500;600&family=Plus+Jakarta+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400&display=swap" rel="stylesheet">
 
   <meta name="csrf-token" content="{{ csrf_token() }}">
-  <link rel="stylesheet" href="/static/style.css">
+  <link rel="stylesheet" href="/static/style.css?v=20261017f">
 </head>
 <body>
   <a class="skip-link" href="#mainContent">Skip to course workspace</a>
@@ -333,6 +333,9 @@
                 <h3>Lesson sequence</h3>
                 <p id="slideCount">0 slides</p>
               </div>
+              <button id="addSlideBtn" class="btn btn-sm btn-primary" type="button" title="Add a new slide to this presentation">
+                <span aria-hidden="true">＋</span> Add slide
+              </button>
             </div>
             <div id="slideList" class="slide-list"></div>
           </div>
@@ -340,9 +343,17 @@
           <div class="card slide-editor">
             <div id="slideEmpty" class="empty-state" hidden>No slides were returned for this course.</div>
             <div id="slideEditFields" hidden>
-              <div class="editor-top">
-                <span id="slideNumber" class="pill purple">SLIDE 01</span>
-                <span class="microcopy">Session edits</span>
+              <div class="editor-top slide-editor-top-bar">
+                <div class="slide-badge-group">
+                  <span id="slideNumber" class="pill purple">SLIDE 01</span>
+                  <span class="microcopy">Session edits</span>
+                </div>
+                <div class="slide-actions-toolbar" aria-label="Slide management actions">
+                  <button id="moveSlideUpBtn" class="btn btn-tiny btn-quiet" type="button" title="Move slide earlier">↑ Up</button>
+                  <button id="moveSlideDownBtn" class="btn btn-tiny btn-quiet" type="button" title="Move slide later">↓ Down</button>
+                  <button id="duplicateSlideBtn" class="btn btn-tiny btn-quiet" type="button" title="Duplicate current slide">⎘ Duplicate</button>
+                  <button id="deleteSlideBtn" class="btn btn-tiny btn-danger-quiet" type="button" title="Delete current slide">🗑 Delete</button>
+                </div>
               </div>
               <label for="slideTitle">Slide title</label>
               <input id="slideTitle">
@@ -447,27 +458,89 @@
           <div id="exerciseList" class="exercise-grid"></div>
         </section>
         <section class="card">
-          <div class="card-head">
+          <div class="card-head quiz-card-head">
             <div>
               <h3>Knowledge check</h3>
-              <p>Instructor review mode — answers and explanations are visible.</p>
+              <p id="quizSubtitle">Instructor review mode — answers and explanations are visible.</p>
             </div>
-            <span id="quizCount" class="pill neutral">0 questions</span>
+            <div class="quiz-toolbar">
+              <div class="quiz-mode-pill-group" role="radiogroup" aria-label="Quiz mode">
+                <button type="button" id="quizModeReview" class="quiz-mode-btn active" aria-checked="true">
+                  <span>Instructor Key</span>
+                </button>
+                <button type="button" id="quizModePractice" class="quiz-mode-btn" aria-checked="false">
+                  <span>Interactive Test</span>
+                </button>
+              </div>
+              <input type="search" id="quizSearch" class="quiz-search-box" placeholder="Filter questions…" aria-label="Search questions">
+              <button id="addQuestionBtn" class="btn btn-sm btn-primary" type="button" title="Add a custom question to this quiz">
+                <span aria-hidden="true">＋</span> Add Question
+              </button>
+              <span id="quizCount" class="pill neutral">0 questions</span>
+            </div>
           </div>
           <div id="quizList" class="quiz-list"></div>
         </section>
       </section>
 
-      <!-- VIEW 6: CHEAT SHEET -->
+      <!-- VIEW 6: CHEAT SHEET & KNOWLEDGE GRAPH -->
       <section id="cheat" class="panel" aria-labelledby="cheatTitle">
         <div class="section-intro">
           <div>
-            <div class="eyebrow">QUICK REFERENCE</div>
-            <h2 id="cheatTitle">Cheat sheet</h2>
-            <p>Terms and definitions returned for this course.</p>
+            <div class="eyebrow">QUICK REFERENCE & CONCEPT MAP</div>
+            <h2 id="cheatTitle">Cheat sheet & Concept Graph</h2>
+            <p>Interactive knowledge graph showing concept connections alongside quick-reference definitions.</p>
+          </div>
+          <div class="cheat-top-actions">
+            <button id="addCheatTermBtn" class="btn btn-sm btn-primary" type="button" title="Add a custom term to the cheat sheet and graph">
+              <span aria-hidden="true">＋</span> Add Concept Term
+            </button>
           </div>
         </div>
+
+        <!-- Interactive Concept Knowledge Graph Card -->
+        <section class="card knowledge-graph-card">
+          <div class="card-head graph-head-flex">
+            <div>
+              <h3>Curriculum Knowledge Graph</h3>
+              <p>Visual relationship web of principles, lifecycle mechanisms, and design patterns.</p>
+            </div>
+            <div class="graph-toolbar">
+              <div class="graph-filters" id="cheatCategoryFilters" role="radiogroup" aria-label="Category filters">
+                <button type="button" class="graph-filter-pill active" data-cat="all">All Concepts (<span id="catCountAll">14</span>)</button>
+                <button type="button" class="graph-filter-pill" data-cat="Core Principles">Core Principles</button>
+                <button type="button" class="graph-filter-pill" data-cat="Lifecycle & Memory">Lifecycle & Memory</button>
+                <button type="button" class="graph-filter-pill" data-cat="Design & Modularity">Design & Modularity</button>
+              </div>
+              <button type="button" id="btnResetGraphView" class="btn btn-tiny btn-quiet" title="Re-center graph view">↻ Re-center</button>
+            </div>
+          </div>
+          <div class="graph-canvas-wrapper">
+            <div id="cheatGraphContainer" class="cheat-graph-container" role="region" aria-label="Interactive concept relationship map">
+              <!-- Dynamically generated SVG graph with glowing nodes and curved relationship arcs -->
+            </div>
+            <div id="graphTooltip" class="graph-tooltip" hidden></div>
+          </div>
+          <div class="graph-footer-legend">
+            <span class="legend-badge"><i class="legend-dot dot-core"></i> Core Principles</span>
+            <span class="legend-badge"><i class="legend-dot dot-life"></i> Lifecycle & Memory</span>
+            <span class="legend-badge"><i class="legend-dot dot-design"></i> Design & Modularity</span>
+            <span class="legend-hint">💡 Hover a node to highlight connections · Click to scroll to definition card</span>
+          </div>
+        </section>
+
+        <!-- Reference Lexicon Grid -->
         <section class="card">
+          <div class="card-head lexicon-head-flex">
+            <div>
+              <h3>Concept Lexicon</h3>
+              <p>Definitions, syntax snippets, and related curriculum concepts.</p>
+            </div>
+            <div class="lexicon-search-bar">
+              <input type="search" id="cheatSearch" class="lexicon-search-input" placeholder="Search concepts or syntax…" aria-label="Search concepts">
+              <span id="cheatFilteredCount" class="pill neutral">14 terms</span>
+            </div>
+          </div>
           <div id="cheatGrid" class="cheat-grid"></div>
         </section>
       </section>
@@ -568,7 +641,113 @@
     </div>
   </div>
 
+  <!-- 4. Add Quiz Question Modal -->
+  <div id="modalAddQuestion" class="modal-dialog" role="dialog" aria-modal="true" aria-labelledby="addQuestionTitle" hidden>
+    <div class="modal-card">
+      <div class="modal-header">
+        <div>
+          <div class="eyebrow">QUESTION BANK</div>
+          <h2 id="addQuestionTitle">Add Quiz Question</h2>
+          <p>Create a pedagogic question with options, instructor explanation, and correct answer key.</p>
+        </div>
+        <button type="button" class="modal-close-btn" data-close-modal aria-label="Close dialog">✕</button>
+      </div>
+      <div class="modal-body">
+        <form id="addQuestionForm">
+          <div class="form-group" style="margin-bottom: 1rem;">
+            <label for="newQuestionText" style="display: block; font-size: 0.88rem; font-weight: 600; margin-bottom: 0.35rem;">Question Prompt</label>
+            <input type="text" id="newQuestionText" class="auth-input" required maxlength="1000" placeholder="e.g. What is the role of the super() call in a subclass constructor?" style="width: 100%; height: 42px; padding: 0 0.85rem; border: 1px solid rgba(24,26,36,0.16); border-radius: 8px;">
+          </div>
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; margin-bottom: 1rem;">
+            <div>
+              <label for="newOption0" style="display: block; font-size: 0.82rem; font-weight: 600; margin-bottom: 0.25rem;">Option A</label>
+              <input type="text" id="newOption0" class="auth-input" required maxlength="300" placeholder="Option A text" style="width: 100%; height: 38px; padding: 0 0.75rem; border: 1px solid rgba(24,26,36,0.16); border-radius: 8px;">
+            </div>
+            <div>
+              <label for="newOption1" style="display: block; font-size: 0.82rem; font-weight: 600; margin-bottom: 0.25rem;">Option B</label>
+              <input type="text" id="newOption1" class="auth-input" required maxlength="300" placeholder="Option B text" style="width: 100%; height: 38px; padding: 0 0.75rem; border: 1px solid rgba(24,26,36,0.16); border-radius: 8px;">
+            </div>
+            <div>
+              <label for="newOption2" style="display: block; font-size: 0.82rem; font-weight: 600; margin-bottom: 0.25rem;">Option C</label>
+              <input type="text" id="newOption2" class="auth-input" required maxlength="300" placeholder="Option C text" style="width: 100%; height: 38px; padding: 0 0.75rem; border: 1px solid rgba(24,26,36,0.16); border-radius: 8px;">
+            </div>
+            <div>
+              <label for="newOption3" style="display: block; font-size: 0.82rem; font-weight: 600; margin-bottom: 0.25rem;">Option D</label>
+              <input type="text" id="newOption3" class="auth-input" required maxlength="300" placeholder="Option D text" style="width: 100%; height: 38px; padding: 0 0.75rem; border: 1px solid rgba(24,26,36,0.16); border-radius: 8px;">
+            </div>
+          </div>
+          <div style="display: grid; grid-template-columns: 140px 1fr; gap: 0.75rem; margin-bottom: 1rem;">
+            <div>
+              <label for="newCorrectIndex" style="display: block; font-size: 0.82rem; font-weight: 600; margin-bottom: 0.25rem;">Correct Answer</label>
+              <select id="newCorrectIndex" style="width: 100%; height: 38px; padding: 0 0.75rem; border: 1px solid rgba(24,26,36,0.16); border-radius: 8px;">
+                <option value="0">Option A</option>
+                <option value="1">Option B</option>
+                <option value="2">Option C</option>
+                <option value="3">Option D</option>
+              </select>
+            </div>
+            <div>
+              <label for="newExplanation" style="display: block; font-size: 0.82rem; font-weight: 600; margin-bottom: 0.25rem;">Instructor Explanation</label>
+              <input type="text" id="newExplanation" class="auth-input" required maxlength="800" placeholder="Explain why this answer is correct..." style="width: 100%; height: 38px; padding: 0 0.75rem; border: 1px solid rgba(24,26,36,0.16); border-radius: 8px;">
+            </div>
+          </div>
+          <div class="modal-footer-actions">
+            <button type="button" class="btn btn-quiet" data-close-modal>Cancel</button>
+            <button type="submit" class="btn btn-primary" id="btnSubmitNewQuestion">Add to Quiz</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- 5. Add Concept Term Modal -->
+  <div id="modalAddTerm" class="modal-dialog" role="dialog" aria-modal="true" aria-labelledby="addTermTitle" hidden>
+    <div class="modal-card modal-card-sm">
+      <div class="modal-header">
+        <div>
+          <div class="eyebrow">LEXICON & GRAPH</div>
+          <h2 id="addTermTitle">Add Concept Term</h2>
+          <p>Add a term to the cheat sheet and connect it into the interactive knowledge graph.</p>
+        </div>
+        <button type="button" class="modal-close-btn" data-close-modal aria-label="Close dialog">✕</button>
+      </div>
+      <div class="modal-body">
+        <form id="addTermForm">
+          <div class="form-group" style="margin-bottom: 1rem;">
+            <label for="newTermName" style="display: block; font-size: 0.88rem; font-weight: 600; margin-bottom: 0.35rem;">Term Name</label>
+            <input type="text" id="newTermName" class="auth-input" required maxlength="120" placeholder="e.g. Dynamic Binding" style="width: 100%; height: 42px; padding: 0 0.85rem; border: 1px solid rgba(24,26,36,0.16); border-radius: 8px;">
+          </div>
+          <div class="form-group" style="margin-bottom: 1rem;">
+            <label for="newTermCategory" style="display: block; font-size: 0.82rem; font-weight: 600; margin-bottom: 0.25rem;">Category</label>
+            <select id="newTermCategory" style="width: 100%; height: 38px; padding: 0 0.75rem; border: 1px solid rgba(24,26,36,0.16); border-radius: 8px;">
+              <option value="Core Principles">Core Principles</option>
+              <option value="Lifecycle & Memory">Lifecycle & Memory</option>
+              <option value="Design & Modularity">Design & Modularity</option>
+              <option value="General">General</option>
+            </select>
+          </div>
+          <div class="form-group" style="margin-bottom: 1rem;">
+            <label for="newTermDefinition" style="display: block; font-size: 0.88rem; font-weight: 600; margin-bottom: 0.35rem;">Definition</label>
+            <textarea id="newTermDefinition" class="auth-input" required maxlength="1000" rows="3" placeholder="Provide a concise pedagogical definition..." style="width: 100%; padding: 0.65rem 0.85rem; border: 1px solid rgba(24,26,36,0.16); border-radius: 8px;"></textarea>
+          </div>
+          <div class="form-group" style="margin-bottom: 1rem;">
+            <label for="newTermExample" style="display: block; font-size: 0.82rem; font-weight: 600; margin-bottom: 0.25rem;">Code / Syntax Example (Optional)</label>
+            <input type="text" id="newTermExample" class="auth-input" maxlength="300" placeholder="e.g. Animal a = new Cat(); a.speak();" style="width: 100%; height: 38px; padding: 0 0.75rem; border: 1px solid rgba(24,26,36,0.16); border-radius: 8px; font-family: monospace;">
+          </div>
+          <div class="form-group" style="margin-bottom: 1.25rem;">
+            <label for="newTermRelated" style="display: block; font-size: 0.82rem; font-weight: 600; margin-bottom: 0.25rem;">Related Terms for Graph (Comma-separated)</label>
+            <input type="text" id="newTermRelated" class="auth-input" maxlength="200" placeholder="e.g. Polymorphism, Method Overriding, Object" style="width: 100%; height: 38px; padding: 0 0.75rem; border: 1px solid rgba(24,26,36,0.16); border-radius: 8px;">
+          </div>
+          <div class="modal-footer-actions">
+            <button type="button" class="btn btn-quiet" data-close-modal>Cancel</button>
+            <button type="submit" class="btn btn-primary" id="btnSubmitNewTerm">Add to Lexicon</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
-  <script src="/static/app.js"></script>
+  <script src="/static/app.js?v=20261017f"></script>
 </body>
 </html>

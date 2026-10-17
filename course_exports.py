@@ -231,7 +231,8 @@ def create_pptx(course):
                          f"Answer: {answer}\nExplanation: {question.get('explanation', '')}")
 
     terms = course.get("cheatSheet", [])
-    for group in _chunks(terms, 10):
+    valid_terms = [t for t in terms if isinstance(t, dict)]
+    for group in _chunks(valid_terms, 10):
         slide = base_slide("Quick reference", "Revision")
         notes = ["FULL QUICK REFERENCE"]
         for index, term in enumerate(group):
@@ -378,8 +379,19 @@ def create_pdf(course):
         story.append(PageBreak())
         story.append(Paragraph("Quick reference", styles["Heading1"]))
     for term in terms:
+        if not isinstance(term, dict):
+            continue
         story.append(Paragraph(safe_text(term.get("term", "Term")), styles["Heading2"]))
+        if term.get("category"):
+            story.append(Paragraph("Category: " + safe_text(term["category"]), styles["CourseKraftMetadata"]))
         story.append(Paragraph(safe_text(term.get("definition", "")), styles["BodyText"]))
+        if term.get("example"):
+            story.append(Preformatted(safe_text(term["example"]), styles["CourseKraftCode"], maxLineLength=100))
+        if term.get("related"):
+            related_str = " · ".join(str(r) for r in term["related"] if r)
+            if related_str:
+                story.append(Paragraph("<b>Connected concepts:</b> " + safe_text(related_str), styles["CourseKraftMetadata"]))
+        story.append(Spacer(1, 6))
 
     document.build(story)
     output.seek(0)

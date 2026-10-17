@@ -1,7 +1,18 @@
 "use strict";
 
 const $ = (id) => document.getElementById(id);
-const state = { course: null, view: "create", selectedSlide: 0, selectedCode: 0, busy: false };
+const state = {
+  course: null,
+  view: "create",
+  selectedSlide: 0,
+  selectedCode: 0,
+  busy: false,
+  quizMode: "review",
+  quizAnswers: {},
+  quizSearch: "",
+  cheatCategoryFilter: "all",
+  cheatSearch: ""
+};
 let providerNoticeMessage = "";
 let paperSceneInstance = null;
 let paperSceneModulePromise = null;
@@ -286,6 +297,71 @@ function renderVisualDiagram(slide) {
   }
 }
 
+function addSlide() {
+  if (!state.course) return;
+  saveCurrentSlide();
+  const slides = state.course.slides || (state.course.slides = []);
+  const count = slides.length + 1;
+  const newSlide = {
+    title: `Key Concept ${count}`,
+    bullets: [
+      "Core operational mechanism and architectural foundations.",
+      "Key implementation patterns and common edge cases.",
+      "Practical industry applications and design recommendations."
+    ],
+    speakerNotes: "Introduce this concept by connecting it to the previous module.",
+    visualType: "flowchart",
+    visualDescription: "Sequential flow tracing input through processing to final state.",
+    visualLabels: ["Input", "Processing Unit", "Verified Result"]
+  };
+  slides.push(newSlide);
+  state.selectedSlide = slides.length - 1;
+  renderAll();
+  toast(`Added Slide ${count} to presentation.`);
+}
+
+function deleteCurrentSlide() {
+  if (!state.course) return;
+  const slides = state.course.slides || [];
+  if (slides.length <= 1) {
+    toast("Presentations must contain at least 1 slide.");
+    return;
+  }
+  const removedTitle = slides[state.selectedSlide]?.title || `Slide ${state.selectedSlide + 1}`;
+  slides.splice(state.selectedSlide, 1);
+  state.selectedSlide = Math.max(0, Math.min(state.selectedSlide, slides.length - 1));
+  renderAll();
+  toast(`Deleted "${removedTitle}".`);
+}
+
+function duplicateCurrentSlide() {
+  if (!state.course) return;
+  saveCurrentSlide();
+  const slides = state.course.slides || [];
+  const current = slides[state.selectedSlide];
+  if (!current) return;
+  const clone = JSON.parse(JSON.stringify(current));
+  clone.title = `${clone.title || "Slide"} (Copy)`;
+  slides.splice(state.selectedSlide + 1, 0, clone);
+  state.selectedSlide += 1;
+  renderAll();
+  toast(`Duplicated "${current.title}".`);
+}
+
+function moveCurrentSlide(direction) {
+  if (!state.course) return;
+  saveCurrentSlide();
+  const slides = state.course.slides || [];
+  const targetIndex = state.selectedSlide + direction;
+  if (targetIndex < 0 || targetIndex >= slides.length) return;
+  const temp = slides[state.selectedSlide];
+  slides[state.selectedSlide] = slides[targetIndex];
+  slides[targetIndex] = temp;
+  state.selectedSlide = targetIndex;
+  renderAll();
+  toast(`Moved slide to position ${targetIndex + 1}.`);
+}
+
 function renderSlides() {
   const slides = Array.isArray(state.course.slides) ? state.course.slides : [];
   $("slideCount").textContent = `${slides.length} ${slides.length === 1 ? "slide" : "slides"}`;
@@ -295,6 +371,11 @@ function renderSlides() {
     : emptyMarkup("No slides were returned for this course.");
   $("slideEmpty").hidden = slides.length > 0;
   $("slideEditFields").hidden = slides.length === 0;
+
+  if ($("deleteSlideBtn")) $("deleteSlideBtn").disabled = slides.length <= 1;
+  if ($("moveSlideUpBtn")) $("moveSlideUpBtn").disabled = state.selectedSlide <= 0;
+  if ($("moveSlideDownBtn")) $("moveSlideDownBtn").disabled = state.selectedSlide >= slides.length - 1;
+
   if (!slides.length) return;
   state.selectedSlide = Math.max(0, Math.min(state.selectedSlide, slides.length - 1));
   const slide = slides[state.selectedSlide];
@@ -348,9 +429,9 @@ function renderCodes(resetResult = true) {
 }
 
 function renderPractice() {
-  const exercises = Array.isArray(state.course.exercises) ? state.course.exercises : [];
-  const quiz = Array.isArray(state.course.quiz) ? state.course.quiz : [];
-  $("practiceNavCount").textContent = exercises.length + quiz.length;
+  const exercises = Array.isArray(state.course?.exercises) ? state.course.exercises : [];
+  const rawQuiz = Array.isArray(state.course?.quiz) ? state.course.quiz : [];
+  $("practiceNavCount").textContent = exercises.length + rawQuiz.length;
   $("exerciseCount").textContent = `${exercises.length} ${exercises.length === 1 ? "exercise" : "exercises"}`;
   $("exerciseList").innerHTML = exercises.length ? exercises.map((item) => `
     <article class="exercise">
@@ -359,29 +440,488 @@ function renderPractice() {
       <p>${esc(item.description || "No description supplied.")}</p>
       ${item.testHint ? `<p style="margin-top:8px;"><b>Acceptance hint:</b> ${esc(item.testHint)}</p>` : ""}
     </article>`).join("") : emptyMarkup("No exercises were returned for this course.");
-  $("quizCount").textContent = `${quiz.length} ${quiz.length === 1 ? "question" : "questions"}`;
-  $("quizList").innerHTML = quiz.length ? quiz.map((item, index) => {
+
+  // Quiz Toolbar Mode & Subtitle
+  const isPractice = state.quizMode === "practice";
+  $("quizModeReview")?.classList.toggle("active", !isPractice);
+  $("quizModePractice")?.classList.toggle("active", isPractice);
+  $("quizModeReview")?.setAttribute("aria-checked", String(!isPractice));
+  $("quizModePractice")?.setAttribute("aria-checked", String(isPractice));
+  if ($("quizSubtitle")) {
+    $("quizSubtitle").textContent = isPractice
+      ? "Interactive practice mode — click options to test your knowledge with real-time feedback."
+      : "Instructor review mode — answers and explanations are visible.";
+  }
+
+  // Filter questions by search query
+  const query = (state.quizSearch || "").trim().toLowerCase();
+  const filteredQuiz = rawQuiz.map((item, originalIndex) => ({ item, originalIndex })).filter(({ item }) => {
+    if (!query) return true;
+    const textMatch = (item.question || "").toLowerCase().includes(query);
+    const optMatch = (item.options || []).some((opt) => String(opt).toLowerCase().includes(query));
+    const expMatch = (item.explanation || "").toLowerCase().includes(query);
+    return textMatch || optMatch || expMatch;
+  });
+
+  $("quizCount").textContent = `${rawQuiz.length} ${rawQuiz.length === 1 ? "question" : "questions"}`;
+
+  if (!filteredQuiz.length) {
+    $("quizList").innerHTML = rawQuiz.length
+      ? emptyMarkup(`No questions match "${query}". Try another search keyword.`)
+      : emptyMarkup("No quiz questions were returned for this course.");
+    return;
+  }
+
+  $("quizList").innerHTML = filteredQuiz.map(({ item, originalIndex }) => {
     const options = Array.isArray(item.options) ? item.options : [];
-    const answer = Number.isInteger(item.correctIndex) ? options[item.correctIndex] : "Not supplied";
-    return `
-      <article class="quiz-item">
-        <span class="q-num">QUESTION ${String(index + 1).padStart(2, "0")}</span>
-        <h4>${esc(item.question || "Question")}</h4>
-        <ol type="A">${options.map((option) => `<li>${esc(option)}</li>`).join("")}</ol>
-        <div class="answer-key"><b>Instructor Answer:</b> ${esc(answer || "Not supplied")}<br>${esc(item.explanation || "")}</div>
-      </article>`;
-  }).join("") : emptyMarkup("No quiz questions were returned for this course.");
+    const correctIdx = Number.isInteger(item.correctIndex) ? item.correctIndex : 0;
+    const answer = options[correctIdx] || "Not supplied";
+    const userAnswer = state.quizAnswers[originalIndex];
+    const hasAnswered = userAnswer !== undefined;
+
+    if (!isPractice) {
+      // INSTRUCTOR REVIEW MODE
+      return `
+        <article class="quiz-item">
+          <div class="quiz-item-header">
+            <span class="q-num">QUESTION ${String(originalIndex + 1).padStart(2, "0")}</span>
+            ${rawQuiz.length > 1 ? `<button type="button" class="btn btn-tiny btn-danger-quiet btn-del-quiz" data-del-quiz="${originalIndex}" title="Delete question">🗑 Delete</button>` : ""}
+          </div>
+          <h4>${esc(item.question || "Question")}</h4>
+          <ol type="A" class="quiz-review-options">
+            ${options.map((option, optIdx) => `
+              <li class="${optIdx === correctIdx ? "is-correct-option" : ""}">
+                ${esc(option)} ${optIdx === correctIdx ? `<span class="correct-badge">✓ Key</span>` : ""}
+              </li>`).join("")}
+          </ol>
+          <div class="answer-key">
+            <b>Instructor Answer:</b> Option ${String.fromCharCode(65 + correctIdx)} — ${esc(answer)}<br>
+            <span class="explanation-text">${esc(item.explanation || "")}</span>
+          </div>
+        </article>`;
+    } else {
+      // INTERACTIVE TEST MODE
+      const isCorrect = hasAnswered && userAnswer === correctIdx;
+      return `
+        <article class="quiz-item interactive-quiz-item">
+          <div class="quiz-item-header">
+            <span class="q-num">QUESTION ${String(originalIndex + 1).padStart(2, "0")}</span>
+            ${hasAnswered ? `<span class="answer-pill ${isCorrect ? "correct-pill" : "incorrect-pill"}">${isCorrect ? "✓ Correct" : "✕ Incorrect"}</span>` : `<span class="answer-pill pending-pill">Select an option</span>`}
+          </div>
+          <h4>${esc(item.question || "Question")}</h4>
+          <div class="quiz-interactive-options" role="group" aria-label="Question choices">
+            ${options.map((option, optIdx) => {
+              const selected = userAnswer === optIdx;
+              const isOptionCorrect = optIdx === correctIdx;
+              let btnClass = "interactive-opt-btn";
+              if (hasAnswered) {
+                if (selected && isCorrect) btnClass += " opt-correct-choice";
+                else if (selected && !isCorrect) btnClass += " opt-wrong-choice";
+                else if (!selected && isOptionCorrect) btnClass += " opt-reveal-correct";
+              }
+              return `
+                <button type="button" class="${btnClass}" data-q-idx="${originalIndex}" data-opt-idx="${optIdx}">
+                  <span class="opt-letter">${String.fromCharCode(65 + optIdx)}</span>
+                  <span class="opt-text">${esc(option)}</span>
+                  ${hasAnswered && isOptionCorrect ? `<span class="opt-indicator">✓</span>` : ""}
+                  ${hasAnswered && selected && !isCorrect ? `<span class="opt-indicator">✕</span>` : ""}
+                </button>
+              `;
+            }).join("")}
+          </div>
+          ${hasAnswered ? `
+            <div class="quiz-feedback-box ${isCorrect ? "pass-feedback" : "retry-feedback"}">
+              <b>${isCorrect ? "✓ Well done!" : `Notice: The correct answer is Option ${String.fromCharCode(65 + correctIdx)}.`}</b>
+              <p>${esc(item.explanation || "")}</p>
+            </div>
+          ` : ""}
+        </article>`;
+    }
+  }).join("");
+
+  if (isPractice) {
+    document.querySelectorAll(".interactive-opt-btn").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const qIdx = Number(btn.dataset.qIdx);
+        const optIdx = Number(btn.dataset.optIdx);
+        state.quizAnswers[qIdx] = optIdx;
+        renderPractice();
+      });
+    });
+  } else {
+    document.querySelectorAll("[data-del-quiz]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const idx = Number(btn.dataset.delQuiz);
+        if (state.course.quiz && state.course.quiz.length > 1) {
+          state.course.quiz.splice(idx, 1);
+          renderAll();
+          toast("Question removed from quiz.");
+        }
+      });
+    });
+  }
+}
+
+const CATEGORY_COLORS = {
+  "Core Principles": { stroke: "#6f54f7", fill: "#583ef0", ring: "#d4ccff", soft: "#f1eeff", text: "#432ac9" },
+  "Lifecycle & Memory": { stroke: "#f29e85", fill: "#e5785a", ring: "#fecaca", soft: "#fbf0ec", text: "#7a3826" },
+  "Design & Modularity": { stroke: "#15803d", fill: "#166534", ring: "#bbf7d0", soft: "#ecfdf5", text: "#14532d" },
+  "General": { stroke: "#45475e", fill: "#272a3d", ring: "#d2c8b8", soft: "#f4efe5", text: "#0d0f1d" }
+};
+
+function getCategoryColor(category) {
+  return CATEGORY_COLORS[category] || CATEGORY_COLORS["General"];
+}
+
+function renderConceptGraph(items) {
+  const container = $("cheatGraphContainer");
+  if (!container) return;
+  if (!items.length) {
+    container.innerHTML = emptyMarkup("No concepts available to map.");
+    return;
+  }
+
+  const width = 940;
+  const height = 370;
+
+  const categoryGroups = {};
+  items.forEach((item, index) => {
+    const cat = item.category || "General";
+    if (!categoryGroups[cat]) categoryGroups[cat] = [];
+    categoryGroups[cat].push({ item, index });
+  });
+
+  const categories = Object.keys(categoryGroups);
+  const nodePositions = new Array(items.length);
+
+  // Assign cluster centers dynamically so nodes never collapse or stack on top of each other
+  const knownClusters = {
+    "Core Principles": { cx: 230, cy: 175, rX: 140, rY: 95 },
+    "Lifecycle & Memory": { cx: 485, cy: 230, rX: 130, rY: 85 },
+    "Design & Modularity": { cx: 730, cy: 165, rX: 140, rY: 95 }
+  };
+
+  if (categories.length === 1) {
+    // Single category: distribute evenly across two concentric rings around the center
+    const group = categoryGroups[categories[0]];
+    const total = group.length;
+    group.forEach(({ item, index }, gIdx) => {
+      let x, y;
+      if (total <= 6) {
+        const angle = (gIdx / Math.max(total, 1)) * 2 * Math.PI - Math.PI / 2;
+        x = 470 + 220 * Math.cos(angle);
+        y = 175 + 100 * Math.sin(angle);
+      } else {
+        const innerCount = Math.min(5, Math.floor(total / 3));
+        if (gIdx < innerCount) {
+          const angle = (gIdx / innerCount) * 2 * Math.PI - Math.PI / 2;
+          x = 470 + 130 * Math.cos(angle);
+          y = 175 + 65 * Math.sin(angle);
+        } else {
+          const outerIdx = gIdx - innerCount;
+          const outerCount = total - innerCount;
+          const angle = (outerIdx / outerCount) * 2 * Math.PI - Math.PI / 2;
+          x = 470 + 330 * Math.cos(angle);
+          y = 175 + 115 * Math.sin(angle);
+        }
+      }
+      nodePositions[index] = { x, y, item, index, cat: categories[0] };
+    });
+  } else {
+    // Multiple categories: give each non-standard category its own distinct anchor
+    const fallbackCenters = [
+      { cx: 230, cy: 175, rX: 135, rY: 90 },
+      { cx: 710, cy: 175, rX: 135, rY: 90 },
+      { cx: 470, cy: 115, rX: 140, rY: 65 },
+      { cx: 470, cy: 245, rX: 140, rY: 65 }
+    ];
+    let fallbackIdx = 0;
+
+    categories.forEach((cat) => {
+      const group = categoryGroups[cat];
+      const cluster = knownClusters[cat] || fallbackCenters[(fallbackIdx++) % fallbackCenters.length];
+      const count = group.length;
+      group.forEach(({ item, index }, gIdx) => {
+        const angle = (gIdx / Math.max(count, 1)) * 2 * Math.PI - Math.PI / 2;
+        const x = cluster.cx + cluster.rX * Math.cos(angle);
+        const y = cluster.cy + cluster.rY * Math.sin(angle);
+        nodePositions[index] = { x, y, item, index, cat };
+      });
+    });
+  }
+
+  // Iterative collision-avoidance pass to ensure every node has at least 68px clearance
+  for (let iter = 0; iter < 15; iter++) {
+    for (let i = 0; i < nodePositions.length; i++) {
+      for (let j = i + 1; j < nodePositions.length; j++) {
+        const p1 = nodePositions[i];
+        const p2 = nodePositions[j];
+        if (!p1 || !p2) continue;
+        const dx = p2.x - p1.x;
+        const dy = p2.y - p1.y;
+        const dist = Math.hypot(dx, dy) || 0.01;
+        const minDist = 68;
+        if (dist < minDist) {
+          const shift = (minDist - dist) / 2;
+          const ux = dx / dist;
+          const uy = dy / dist;
+          p1.x -= ux * shift;
+          p1.y -= uy * shift;
+          p2.x += ux * shift;
+          p2.y += uy * shift;
+        }
+      }
+    }
+    nodePositions.forEach((pos) => {
+      if (!pos) return;
+      pos.x = Math.max(70, Math.min(width - 70, pos.x));
+      pos.y = Math.max(45, Math.min(height - 45, pos.y));
+    });
+  }
+
+  const links = [];
+  const termToIndex = new Map();
+  items.forEach((item, index) => {
+    if (item.term) termToIndex.set(item.term.toLowerCase(), index);
+  });
+
+  items.forEach((item, i) => {
+    const relatedList = Array.isArray(item.related) ? item.related : [];
+    if (relatedList.length) {
+      relatedList.forEach((rel) => {
+        const j = termToIndex.get(String(rel).toLowerCase().trim());
+        if (j !== undefined && i < j) {
+          links.push({ source: i, target: j, cat: item.category });
+        }
+      });
+    } else {
+      const myCat = item.category || "General";
+      const sameCatGroup = (categoryGroups[myCat] || []).map(g => g.index);
+      const myCatIdx = sameCatGroup.indexOf(i);
+      if (myCatIdx !== -1 && myCatIdx < sameCatGroup.length - 1) {
+        links.push({ source: i, target: sameCatGroup[myCatIdx + 1], cat: myCat });
+      }
+    }
+  });
+
+  const crossLinks = [
+    ["class", "object"],
+    ["class", "constructor"],
+    ["inheritance", "polymorphism"],
+    ["abstraction", "interface"],
+    ["encapsulation", "object"]
+  ];
+  crossLinks.forEach(([t1, t2]) => {
+    const i1 = termToIndex.get(t1);
+    const i2 = termToIndex.get(t2);
+    if (i1 !== undefined && i2 !== undefined && i1 !== i2) {
+      if (!links.some(l => (l.source === i1 && l.target === i2) || (l.source === i2 && l.target === i1))) {
+        links.push({ source: Math.min(i1, i2), target: Math.max(i1, i2), cross: true });
+      }
+    }
+  });
+
+  const filterCat = state.cheatCategoryFilter;
+  const searchQ = (state.cheatSearch || "").trim().toLowerCase();
+
+  const svgContent = `
+    <svg viewBox="0 0 ${width} ${height}" class="concept-graph-svg" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <filter id="nodeGlow" x="-50%" y="-50%" width="200%" height="200%">
+          <feGaussianBlur stdDeviation="3.5" result="coloredBlur"/>
+          <feMerge>
+            <feMergeNode in="coloredBlur"/>
+            <feMergeNode in="SourceGraphic"/>
+          </feMerge>
+        </filter>
+        <linearGradient id="linkGradViolet" x1="0%" y1="0%" x2="100%" y2="0%">
+          <stop offset="0%" stop-color="#6f54f7" stop-opacity="0.6"/>
+          <stop offset="100%" stop-color="#f29e85" stop-opacity="0.6"/>
+        </linearGradient>
+      </defs>
+
+      <g class="graph-links-layer">
+        ${links.map((link) => {
+          const p1 = nodePositions[link.source];
+          const p2 = nodePositions[link.target];
+          if (!p1 || !p2) return "";
+          const cx = (p1.x + p2.x) / 2 + (p1.y - p2.y) * 0.12;
+          const cy = (p1.y + p2.y) / 2 + (p2.x - p1.x) * 0.12;
+          const color = link.cross ? "url(#linkGradViolet)" : (getCategoryColor(link.cat).stroke);
+          return `<path class="graph-edge-path" data-src="${link.source}" data-tgt="${link.target}" d="M ${p1.x.toFixed(1)} ${p1.y.toFixed(1)} Q ${cx.toFixed(1)} ${cy.toFixed(1)} ${p2.x.toFixed(1)} ${p2.y.toFixed(1)}" stroke="${color}" />`;
+        }).join("")}
+      </g>
+
+      <g class="graph-nodes-layer">
+        ${nodePositions.map((pos) => {
+          if (!pos) return "";
+          const colorTheme = getCategoryColor(pos.cat);
+          const isCategoryMatch = filterCat === "all" || pos.cat === filterCat;
+          const isSearchMatch = !searchQ || pos.item.term.toLowerCase().includes(searchQ) || (pos.item.definition || "").toLowerCase().includes(searchQ);
+          const isDimmed = !isCategoryMatch || !isSearchMatch;
+          const label = esc(pos.item.term);
+          const labelWidth = Math.min(130, Math.max(50, label.length * 7.5 + 14));
+
+          return `
+            <g class="graph-node-group ${isDimmed ? "node-dimmed" : ""}" data-idx="${pos.index}" data-cat="${esc(pos.cat)}">
+              <!-- Stable, continuous hit-target circle covering core and label to prevent mouseleave bounce -->
+              <circle class="node-hit-target" cx="${pos.x}" cy="${pos.y + 10}" r="34" fill="transparent" pointer-events="all" />
+              <circle class="node-halo" cx="${pos.x}" cy="${pos.y}" r="22" fill="${colorTheme.soft}" stroke="${colorTheme.ring}" stroke-width="1.5" pointer-events="none" />
+              <circle class="node-core" cx="${pos.x}" cy="${pos.y}" r="12" fill="${colorTheme.fill}" filter="url(#nodeGlow)" pointer-events="none" />
+              <rect class="node-label-bg" x="${pos.x - labelWidth / 2}" y="${pos.y + 16}" width="${labelWidth}" height="19" rx="5" fill="#ffffff" stroke="${colorTheme.ring}" stroke-width="1" pointer-events="none" />
+              <text class="node-label-text" x="${pos.x}" y="${pos.y + 29}" text-anchor="middle" fill="#0d0f1d" font-size="11" font-weight="600" font-family="'Plus Jakarta Sans', sans-serif" pointer-events="none">${label}</text>
+            </g>
+          `;
+        }).join("")}
+      </g>
+    </svg>
+  `;
+
+  container.innerHTML = svgContent;
+
+  const tooltip = $("graphTooltip");
+  if (tooltip) {
+    tooltip.style.pointerEvents = "none";
+  }
+
+  container.querySelectorAll(".graph-node-group").forEach((nodeGroup) => {
+    const idx = Number(nodeGroup.dataset.idx);
+    const item = items[idx];
+
+    nodeGroup.addEventListener("mouseenter", () => {
+      container.querySelectorAll(".graph-edge-path").forEach((path) => {
+        const isConnected = Number(path.dataset.src) === idx || Number(path.dataset.tgt) === idx;
+        path.classList.toggle("edge-highlight", isConnected);
+        path.classList.toggle("edge-dim", !isConnected);
+      });
+
+      if (tooltip && item) {
+        const catColor = getCategoryColor(item.category);
+        tooltip.innerHTML = `
+          <div class="tooltip-badge" style="background:${catColor.soft};color:${catColor.text};border:1px solid ${catColor.ring};">${esc(item.category || "General")}</div>
+          <b class="tooltip-term">${esc(item.term)}</b>
+          <p class="tooltip-def">${esc(item.definition || "")}</p>
+          ${item.example ? `<pre class="tooltip-example"><code>${esc(item.example)}</code></pre>` : ""}
+        `;
+        tooltip.hidden = false;
+        const rect = nodeGroup.getBoundingClientRect();
+        const wrapperRect = container.getBoundingClientRect();
+        const leftPos = Math.max(12, Math.min(wrapperRect.width - 270, rect.left - wrapperRect.left - 40));
+        const topPos = (rect.top - wrapperRect.top > 120)
+          ? (rect.top - wrapperRect.top - 85)
+          : (rect.bottom - wrapperRect.top + 10);
+        tooltip.style.left = `${leftPos}px`;
+        tooltip.style.top = `${topPos}px`;
+      }
+    });
+
+    nodeGroup.addEventListener("mouseleave", () => {
+      container.querySelectorAll(".graph-edge-path").forEach((path) => {
+        path.classList.remove("edge-highlight", "edge-dim");
+      });
+      if (tooltip) tooltip.hidden = true;
+    });
+
+    nodeGroup.addEventListener("click", () => {
+      const card = $(`term-card-${idx}`);
+      if (card) {
+        card.scrollIntoView({ behavior: "smooth", block: "center" });
+        card.classList.add("term-pulse-highlight");
+        window.setTimeout(() => card.classList.remove("term-pulse-highlight"), 2200);
+      }
+    });
+  });
 }
 
 function renderCheat() {
-  const items = Array.isArray(state.course.cheatSheet) ? state.course.cheatSheet : [];
+  const items = Array.isArray(state.course?.cheatSheet) ? state.course.cheatSheet : [];
   $("cheatNavCount").textContent = items.length;
-  $("cheatTitle").textContent = state.course.title || "Cheat sheet";
-  $("cheatGrid").innerHTML = items.length ? items.map((item) => `
-    <article class="term">
-      <b>${esc(item.term || "Term")}</b>
-      <p>${esc(item.definition || "No definition supplied.")}</p>
-    </article>`).join("") : emptyMarkup("No reference terms were returned for this course.");
+  $("cheatTitle").textContent = state.course?.title || "Cheat sheet";
+  if ($("catCountAll")) $("catCountAll").textContent = items.length;
+
+  renderConceptGraph(items);
+
+  const filterCat = state.cheatCategoryFilter;
+  const searchQ = (state.cheatSearch || "").trim().toLowerCase();
+
+  const filteredItems = items.map((item, originalIndex) => ({ item, originalIndex })).filter(({ item }) => {
+    const isCategoryMatch = filterCat === "all" || (item.category || "General") === filterCat;
+    const isSearchMatch = !searchQ
+      || (item.term || "").toLowerCase().includes(searchQ)
+      || (item.definition || "").toLowerCase().includes(searchQ)
+      || (item.example || "").toLowerCase().includes(searchQ);
+    return isCategoryMatch && isSearchMatch;
+  });
+
+  if ($("cheatFilteredCount")) {
+    $("cheatFilteredCount").textContent = `${filteredItems.length} of ${items.length} terms`;
+  }
+
+  document.querySelectorAll("#cheatCategoryFilters .graph-filter-pill").forEach((pill) => {
+    pill.classList.toggle("active", pill.dataset.cat === filterCat);
+  });
+
+  if (!filteredItems.length) {
+    $("cheatGrid").innerHTML = items.length
+      ? emptyMarkup(`No terms match "${searchQ || filterCat}". Clear search or select "All Concepts".`)
+      : emptyMarkup("No reference terms were returned for this course.");
+    return;
+  }
+
+  $("cheatGrid").innerHTML = filteredItems.map(({ item, originalIndex }) => {
+    const colorTheme = getCategoryColor(item.category);
+    const relatedList = Array.isArray(item.related) ? item.related : [];
+
+    return `
+      <article class="term" id="term-card-${originalIndex}">
+        <div class="term-card-top">
+          <span class="term-cat-badge" style="background:${colorTheme.soft};color:${colorTheme.text};border:1px solid ${colorTheme.ring};">${esc(item.category || "General")}</span>
+          ${items.length > 1 ? `<button type="button" class="btn btn-tiny btn-danger-quiet btn-del-term" data-del-term="${originalIndex}" title="Delete term">🗑</button>` : ""}
+        </div>
+        <b>${esc(item.term || "Term")}</b>
+        <p>${esc(item.definition || "No definition supplied.")}</p>
+        ${item.example ? `
+          <div class="term-code-snippet">
+            <span class="snippet-label">SYNTAX / PATTERN</span>
+            <pre><code>${esc(item.example)}</code></pre>
+          </div>
+        ` : ""}
+        ${relatedList.length ? `
+          <div class="term-related-tags">
+            <span class="related-label">CONNECTS TO:</span>
+            ${relatedList.map((rel) => `<span class="related-chip" data-goto-term="${esc(rel)}">${esc(rel)}</span>`).join("")}
+          </div>
+        ` : ""}
+      </article>
+    `;
+  }).join("");
+
+  document.querySelectorAll("[data-del-term]").forEach((btn) => {
+    btn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      const idx = Number(btn.dataset.delTerm);
+      if (state.course.cheatSheet && state.course.cheatSheet.length > 1) {
+        state.course.cheatSheet.splice(idx, 1);
+        renderAll();
+        toast("Term removed from cheat sheet.");
+      }
+    });
+  });
+
+  document.querySelectorAll("[data-goto-term]").forEach((chip) => {
+    chip.addEventListener("click", () => {
+      const termName = chip.dataset.gotoTerm.toLowerCase().trim();
+      const targetIdx = items.findIndex(t => (t.term || "").toLowerCase().trim() === termName);
+      if (targetIdx !== -1) {
+        const card = $(`term-card-${targetIdx}`);
+        if (card) {
+          card.scrollIntoView({ behavior: "smooth", block: "center" });
+          card.classList.add("term-pulse-highlight");
+          window.setTimeout(() => card.classList.remove("term-pulse-highlight"), 2200);
+        }
+      }
+    });
+  });
 }
 
 function renderAll() {
@@ -516,80 +1056,48 @@ async function verifyCode() {
   }
 }
 
-async function downloadExport(kind, button) {
+function downloadExport(kind, button) {
   if (!state.course) return;
   saveCurrentSlide();
   saveCurrentCode();
   const original = button.textContent;
   button.disabled = true;
-  button.textContent = `Preparing ${kind.toUpperCase()}…`;
+  button.textContent = `Downloading ${kind.toUpperCase()}…`;
+
   try {
-    const response = await fetch(kind === "pdf" ? "/api/export/pdf" : "/api/export/pptx", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(state.course)
-    });
-    if (!response.ok) {
-      let message = `Export failed (${response.status}).`;
-      try { const data = await response.json(); message = data.error || message; } catch { /* Keep status message. */ }
-      throw new Error(message);
-    }
+    const cleanTitle = (state.course?.title || "coursekraft_course")
+      .trim()
+      .replace(/[^a-zA-Z0-9_-]+/g, "_")
+      .replace(/^_+|_+$/g, "") || "coursekraft_course";
+    const filename = `${cleanTitle}.${kind}`;
 
-    // Determine filename: prefer Content-Disposition from server, fallback to sanitized course title
-    let filename = "";
-    const disposition = response.headers.get("Content-Disposition") || response.headers.get("content-disposition");
-    if (disposition) {
-      const match = disposition.match(/filename\*?=['"]?(?:UTF-\d['"]*)?([^;\r\n"']*)['"]?/i);
-      if (match && match[1]) filename = decodeURIComponent(match[1].trim());
-    }
-    if (!filename || !filename.endsWith(`.${kind}`)) {
-      const cleanTitle = (state.course?.title || "coursekraft_course")
-        .trim()
-        .replace(/[^a-zA-Z0-9_-]+/g, "_")
-        .replace(/^_+|_+$/g, "") || "coursekraft_course";
-      filename = `${cleanTitle}.${kind}`;
-    }
+    // Standard native HTML form submission to the export endpoint.
+    // The server responds with 'Content-Disposition: attachment; filename="..."',
+    // which triggers the native browser download manager directly into the user's Downloads folder
+    // with the exact filename and extension, without blob URL gesture expiration or viewer interference.
+    const form = document.createElement("form");
+    form.method = "POST";
+    form.action = `/api/export/${kind}`;
+    form.style.display = "none";
 
-    const mimeType = kind === "pdf"
-      ? "application/pdf"
-      : "application/vnd.openxmlformats-officedocument.presentationml.presentation";
+    const input = document.createElement("input");
+    input.type = "hidden";
+    input.name = "course";
+    input.value = JSON.stringify(state.course);
 
-    const rawBlob = await response.blob();
+    form.appendChild(input);
+    document.body.appendChild(form);
+    form.submit();
+    window.setTimeout(() => form.remove(), 2000);
 
-    // Use File constructor so Chromium/Edge embeds filename directly in object metadata
-    let downloadItem;
-    try {
-      downloadItem = new File([rawBlob], filename, { type: mimeType });
-    } catch {
-      downloadItem = new Blob([rawBlob], { type: mimeType });
-    }
-
-    const objectUrl = URL.createObjectURL(downloadItem);
-    const anchor = document.createElement("a");
-    anchor.style.position = "fixed";
-    anchor.style.left = "-9999px";
-    anchor.style.opacity = "0";
-    anchor.href = objectUrl;
-    anchor.download = filename;
-    anchor.setAttribute("download", filename);
-    document.body.appendChild(anchor);
-
-    // Trigger download with click
-    anchor.click();
-
-    // Do NOT revoke immediately! Keep URL valid for 2 minutes so Edge SmartScreen
-    // has time to inspect the file without reverting the filename to a blob UUID
-    window.setTimeout(() => {
-      anchor.remove();
-      URL.revokeObjectURL(objectUrl);
-    }, 120000);
-
-    toast(`${kind.toUpperCase()} export downloaded as ${filename}`);
+    toast(`Downloading ${kind.toUpperCase()} (${filename})…`);
   } catch (error) {
     toast(error.message);
   } finally {
-    button.disabled = false;
-    button.textContent = original;
+    window.setTimeout(() => {
+      button.disabled = false;
+      button.textContent = original;
+    }, 2000);
   }
 }
 
@@ -703,6 +1211,113 @@ $("codeSelect").addEventListener("change", () => {
 $("verifyBtn").addEventListener("click", verifyCode);
 $("exportPptx").addEventListener("click", (event) => downloadExport("pptx", event.currentTarget));
 $("exportPdfTop").addEventListener("click", (event) => downloadExport("pdf", event.currentTarget));
+
+// Slide management listeners
+$("addSlideBtn")?.addEventListener("click", addSlide);
+$("deleteSlideBtn")?.addEventListener("click", deleteCurrentSlide);
+$("duplicateSlideBtn")?.addEventListener("click", duplicateCurrentSlide);
+$("moveSlideUpBtn")?.addEventListener("click", () => moveCurrentSlide(-1));
+$("moveSlideDownBtn")?.addEventListener("click", () => moveCurrentSlide(1));
+
+// Quiz toolbar and search
+$("quizModeReview")?.addEventListener("click", () => {
+  state.quizMode = "review";
+  renderPractice();
+});
+$("quizModePractice")?.addEventListener("click", () => {
+  state.quizMode = "practice";
+  renderPractice();
+});
+$("quizSearch")?.addEventListener("input", (e) => {
+  state.quizSearch = e.target.value;
+  renderPractice();
+});
+$("addQuestionBtn")?.addEventListener("click", () => {
+  openModal("modalAddQuestion");
+});
+$("addQuestionForm")?.addEventListener("submit", (e) => {
+  e.preventDefault();
+  const qText = $("newQuestionText")?.value.trim();
+  const opt0 = $("newOption0")?.value.trim();
+  const opt1 = $("newOption1")?.value.trim();
+  const opt2 = $("newOption2")?.value.trim();
+  const opt3 = $("newOption3")?.value.trim();
+  const correctIdx = Number($("newCorrectIndex")?.value || 0);
+  const explanation = $("newExplanation")?.value.trim();
+
+  if (!qText || !opt0 || !opt1 || !opt2 || !opt3) {
+    toast("Please fill in question prompt and all 4 options.");
+    return;
+  }
+
+  const newQ = {
+    question: qText,
+    options: [opt0, opt1, opt2, opt3],
+    correctIndex: correctIdx,
+    explanation: explanation || "Instructor explanation."
+  };
+
+  state.course.quiz = state.course.quiz || [];
+  state.course.quiz.push(newQ);
+  renderAll();
+  closeModals();
+  $("addQuestionForm")?.reset();
+  toast("New question added to quiz bank.");
+});
+
+// Cheat sheet search, modal, and filters
+$("cheatSearch")?.addEventListener("input", (e) => {
+  state.cheatSearch = e.target.value;
+  renderCheat();
+});
+$("addCheatTermBtn")?.addEventListener("click", () => {
+  openModal("modalAddTerm");
+});
+$("btnResetGraphView")?.addEventListener("click", () => {
+  state.cheatCategoryFilter = "all";
+  state.cheatSearch = "";
+  if ($("cheatSearch")) $("cheatSearch").value = "";
+  renderCheat();
+  toast("Reset concept map view.");
+});
+document.querySelectorAll("#cheatCategoryFilters .graph-filter-pill").forEach((pill) => {
+  pill.addEventListener("click", () => {
+    state.cheatCategoryFilter = pill.dataset.cat || "all";
+    renderCheat();
+  });
+});
+$("addTermForm")?.addEventListener("submit", (e) => {
+  e.preventDefault();
+  const term = $("newTermName")?.value.trim();
+  const category = $("newTermCategory")?.value || "General";
+  const definition = $("newTermDefinition")?.value.trim();
+  const example = $("newTermExample")?.value.trim();
+  const relatedRaw = $("newTermRelated")?.value.trim();
+
+  if (!term || !definition) {
+    toast("Please enter concept term and definition.");
+    return;
+  }
+
+  const related = relatedRaw
+    ? relatedRaw.split(",").map(t => t.trim()).filter(Boolean)
+    : [];
+
+  const newTermObj = {
+    term,
+    definition,
+    category,
+    ...(example ? { example } : {}),
+    ...(related.length ? { related } : {})
+  };
+
+  state.course.cheatSheet = state.course.cheatSheet || [];
+  state.course.cheatSheet.push(newTermObj);
+  renderAll();
+  closeModals();
+  $("addTermForm")?.reset();
+  toast(`Added "${term}" to cheat sheet & knowledge graph.`);
+});
 
 refreshStatus();
 initializePaperScene();
