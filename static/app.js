@@ -42,6 +42,14 @@ function setNotice(message = "", kind = "status") {
 }
 
 async function requestJson(url, options = {}) {
+  const method = (options.method || "GET").toUpperCase();
+  const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
+  if (csrfToken && ["POST", "PUT", "DELETE", "PATCH"].includes(method)) {
+    options.headers = {
+      ...(options.headers || {}),
+      "X-CSRFToken": csrfToken
+    };
+  }
   const response = await fetch(url, options);
   let data;
   try { data = await response.json(); }
@@ -432,6 +440,20 @@ async function generateCourse(event) {
       })
     });
     setCourse(data.course, data.message || "Generated with Gemini AI. Review this draft before using it.");
+    if (data.course_id && state.course) {
+      state.course.id = data.course_id;
+    }
+    if (data.saved) {
+      toast("Course automatically saved to your persistent vault.");
+      try {
+        const countRes = await requestJson("/api/courses");
+        const len = countRes.courses ? countRes.courses.length : 0;
+        if ($("menuCourseCount")) $("menuCourseCount").textContent = len;
+        if ($("profileModalCourseCount")) $("profileModalCourseCount").textContent = len;
+        const teacherRole = document.querySelector(".teacher-role");
+        if (teacherRole) teacherRole.innerHTML = `Teacher &bull; ${len} saved`;
+      } catch { /* Silent */ }
+    }
   } catch (error) {
     setNotice(`${error.message} No course was generated. The fixed sample below is available if you want to explore the workspace.`, "error");
   } finally {
@@ -684,3 +706,319 @@ $("exportPdfTop").addEventListener("click", (event) => downloadExport("pdf", eve
 
 refreshStatus();
 initializePaperScene();
+
+// ==========================================================================
+// TEACHER ACCOUNT & PERSISTENT VAULT INTERACTIONS
+// ==========================================================================
+
+function openModal(modalId) {
+  closeModals();
+  const modal = $(modalId);
+  const backdrop = $("modalBackdrop");
+  if (!modal || !backdrop) return;
+  backdrop.hidden = false;
+  modal.hidden = false;
+  const focusable = modal.querySelector("input:not([disabled]), button:not([disabled])");
+  focusable?.focus();
+}
+
+function closeModals() {
+  const backdrop = $("modalBackdrop");
+  if (backdrop) backdrop.hidden = true;
+  document.querySelectorAll(".modal-dialog").forEach((m) => {
+    m.hidden = true;
+  });
+}
+
+function closeProfileDropdown() {
+  const menu = $("teacherDropdownMenu");
+  const btn = $("profileDropdownBtn");
+  if (menu) menu.hidden = true;
+  if (btn) btn.setAttribute("aria-expanded", "false");
+}
+
+function toggleProfileDropdown() {
+  const menu = $("teacherDropdownMenu");
+  const btn = $("profileDropdownBtn");
+  if (!menu || !btn) return;
+  const isHidden = menu.hidden;
+  menu.hidden = !isHidden;
+  btn.setAttribute("aria-expanded", String(isHidden));
+}
+
+async function loadTeacherProfile() {
+  try {
+    const data = await requestJson("/api/auth/me");
+    if (!data.authenticated) return;
+    if ($("profileModalName")) $("profileModalName").textContent = data.fullName;
+    if ($("profileModalEmail")) $("profileModalEmail").textContent = data.email;
+    if ($("profileModalAvatar")) $("profileModalAvatar").textContent = data.initials || "T";
+    if ($("profileModalCourseCount")) $("profileModalCourseCount").textContent = data.courseCount ?? 0;
+    if ($("menuCourseCount")) $("menuCourseCount").textContent = data.courseCount ?? 0;
+  } catch (err) {
+    console.error("Could not load teacher profile:", err);
+  }
+}
+
+async function loadSavedCourses() {
+  const loading = $("myCoursesLoading");
+  const empty = $("myCoursesEmpty");
+  const list = $("myCoursesList");
+  if (!loading || !empty || !list) return;
+
+  loading.hidden = false;
+  empty.hidden = true;
+  list.hidden = true;
+  list.innerHTML = "";
+
+  try {
+    const data = await requestJson("/api/courses");
+    const courses = data.courses || [];
+    loading.hidden = true;
+
+    if ($("menuCourseCount")) $("menuCourseCount").textContent = courses.length;
+    if ($("profileModalCourseCount")) $("profileModalCourseCount").textContent = courses.length;
+    const teacherRole = document.querySelector(".teacher-role");
+    if (teacherRole) teacherRole.innerHTML = `Teacher &bull; ${courses.length} saved`;
+
+    if (courses.length === 0) {
+      empty.hidden = false;
+      return;
+    }
+
+    list.innerHTML = courses.map((c) => {
+      const updatedDate = c.updatedAt
+        ? new Date(c.updatedAt).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })
+        : (c.createdAt ? new Date(c.createdAt).toLocaleDateString(undefined, { month: "short", day: "numeric" }) : "");
+      return `
+        <div class="saved-course-card" data-course-id="${esc(c.id)}">
+          <div class="saved-course-info">
+            <b>${esc(c.title || "Untitled Course")}</b>
+            <div class="saved-course-meta">
+              <span class="pill purple">${esc(c.language || "General")}</span>
+              <span>${esc(c.level || "Intermediate")}</span>
+              <span>&bull;</span>
+              <span>${c.durationMinutes || 45} mins</span>
+              ${updatedDate ? `<span>&bull;</span><small>Saved ${esc(updatedDate)}</small>` : ""}
+            </div>
+          </div>
+          <div class="saved-course-actions">
+            <button type="button" class="btn btn-primary btn-sm btn-open-course" data-open-id="${esc(c.id)}">Open in Atelier</button>
+            <button type="button" class="btn-danger-sm btn-delete-course" data-delete-id="${esc(c.id)}" data-title="${esc(c.title)}">Delete</button>
+          </div>
+        </div>
+      `;
+    }).join("");
+
+    list.hidden = false;
+
+    list.querySelectorAll(".btn-open-course").forEach((btn) => {
+      btn.addEventListener("click", async () => {
+        const id = btn.dataset.openId;
+        const originalText = btn.textContent;
+        btn.disabled = true;
+        btn.textContent = "Loading…";
+        try {
+          const res = await requestJson(`/api/courses/${id}`);
+          if (res.course) {
+            setCourse(res.course, "Loaded from persistent vault.");
+            if (state.course) state.course.id = id;
+            showView("overview");
+            closeModals();
+            toast(`Course "${res.course.title}" loaded from your vault.`);
+          }
+        } catch (err) {
+          toast(`Failed to load course: ${err.message}`);
+        } finally {
+          btn.disabled = false;
+          btn.textContent = originalText;
+        }
+      });
+    });
+
+    list.querySelectorAll(".btn-delete-course").forEach((btn) => {
+      btn.addEventListener("click", async () => {
+        const id = btn.dataset.deleteId;
+        const title = btn.dataset.title;
+        if (!window.confirm(`Are you sure you want to delete "${title}" from your vault? This cannot be undone.`)) {
+          return;
+        }
+        btn.disabled = true;
+        btn.textContent = "Deleting…";
+        try {
+          await requestJson(`/api/courses/${id}`, { method: "DELETE" });
+          toast(`"${title}" deleted from vault.`);
+          loadSavedCourses();
+        } catch (err) {
+          toast(`Delete failed: ${err.message}`);
+          btn.disabled = false;
+          btn.textContent = "Delete";
+        }
+      });
+    });
+
+  } catch (err) {
+    loading.hidden = false;
+    loading.textContent = `Could not load saved courses: ${err.message}`;
+  }
+}
+
+async function saveActiveCourse() {
+  if (!state.course) {
+    toast("No active course to save. Generate or load a course first.");
+    return;
+  }
+
+  saveCurrentSlide();
+  saveCurrentCode();
+
+  const btn = $("saveCourseBtn");
+  if (!btn) return;
+  const originalText = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = "Saving to vault…";
+
+  try {
+    const data = await requestJson("/api/courses/save", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(state.course)
+    });
+
+    if (data.course && data.course.id) {
+      state.course.id = data.course.id;
+    }
+    toast(data.message || "Course saved to your persistent vault!");
+
+    try {
+      const countRes = await requestJson("/api/courses");
+      const len = countRes.courses ? countRes.courses.length : 0;
+      if ($("menuCourseCount")) $("menuCourseCount").textContent = len;
+      if ($("profileModalCourseCount")) $("profileModalCourseCount").textContent = len;
+      const teacherRole = document.querySelector(".teacher-role");
+      if (teacherRole) teacherRole.innerHTML = `Teacher &bull; ${len} saved`;
+    } catch { /* Silent */ }
+
+  } catch (err) {
+    if (err.message && (err.message.includes("401") || err.message.toLowerCase().includes("unauthorized") || err.message.toLowerCase().includes("sign in"))) {
+      toast("Please sign in as a teacher to save courses to your persistent vault.");
+      window.location.href = "/login?next=/";
+    } else {
+      toast(`Save failed: ${err.message}`);
+    }
+  } finally {
+    btn.disabled = false;
+    btn.textContent = originalText;
+  }
+}
+
+async function handleSettingsSubmit(event) {
+  event.preventDefault();
+  const input = $("settingsFullName");
+  const feedback = $("settingsFeedback");
+  const submitBtn = $("btnSaveSettings");
+  if (!input) return;
+
+  const fullName = input.value.trim();
+  if (!fullName) {
+    if (feedback) {
+      feedback.textContent = "Please enter your full name.";
+      feedback.hidden = false;
+    }
+    return;
+  }
+
+  if (feedback) feedback.hidden = true;
+  submitBtn.disabled = true;
+  submitBtn.textContent = "Saving…";
+
+  try {
+    const data = await requestJson("/api/auth/update-profile", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ fullName })
+    });
+
+    const updatedUser = data.user;
+    if (updatedUser) {
+      if ($("teacherName")) $("teacherName").textContent = updatedUser.fullName;
+      if ($("dropdownUserName")) $("dropdownUserName").textContent = updatedUser.fullName;
+      if ($("profileModalName")) $("profileModalName").textContent = updatedUser.fullName;
+      if ($("teacherAvatar")) $("teacherAvatar").textContent = updatedUser.initials;
+      if ($("profileModalAvatar")) $("profileModalAvatar").textContent = updatedUser.initials;
+    }
+
+    toast("Profile name updated successfully.");
+    closeModals();
+  } catch (err) {
+    if (feedback) {
+      feedback.textContent = err.message || "Failed to update profile.";
+      feedback.hidden = false;
+    }
+  } finally {
+    submitBtn.disabled = false;
+    submitBtn.textContent = "Save Changes";
+  }
+}
+
+function initializeTeacherAuthUI() {
+  $("profileDropdownBtn")?.addEventListener("click", (e) => {
+    e.stopPropagation();
+    toggleProfileDropdown();
+  });
+
+  document.addEventListener("click", (e) => {
+    const profileRegion = $("sidebarTeacherProfile");
+    if (profileRegion && !profileRegion.contains(e.target)) {
+      closeProfileDropdown();
+    }
+  });
+
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") {
+      closeProfileDropdown();
+      closeModals();
+    }
+  });
+
+  $("menuMyProfile")?.addEventListener("click", () => {
+    closeProfileDropdown();
+    loadTeacherProfile();
+    openModal("modalMyProfile");
+  });
+
+  $("menuMyCourses")?.addEventListener("click", () => {
+    closeProfileDropdown();
+    loadSavedCourses();
+    openModal("modalMyCourses");
+  });
+
+  $("menuAccountSettings")?.addEventListener("click", () => {
+    closeProfileDropdown();
+    const currentName = $("teacherName")?.textContent || "";
+    if ($("settingsFullName")) $("settingsFullName").value = currentName;
+    if ($("settingsFeedback")) $("settingsFeedback").hidden = true;
+    openModal("modalAccountSettings");
+  });
+
+  $("btnSwitchToSettings")?.addEventListener("click", () => {
+    closeModals();
+    const currentName = $("teacherName")?.textContent || "";
+    if ($("settingsFullName")) $("settingsFullName").value = currentName;
+    if ($("settingsFeedback")) $("settingsFeedback").hidden = true;
+    openModal("modalAccountSettings");
+  });
+
+  document.querySelectorAll("[data-close-modal]").forEach((btn) => {
+    btn.addEventListener("click", closeModals);
+  });
+
+  $("modalBackdrop")?.addEventListener("click", closeModals);
+
+  $("settingsForm")?.addEventListener("submit", handleSettingsSubmit);
+
+  $("saveCourseBtn")?.addEventListener("click", saveActiveCourse);
+}
+
+initializeTeacherAuthUI();
+

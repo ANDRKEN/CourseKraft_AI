@@ -1,0 +1,48 @@
+{% extends "auth_layout.html" %}
+
+{% block title %}Sign In — CourseKraft AI{% endblock %}
+
+{% block form_content %}
+<div class="auth-card-header">
+  <h1>Welcome back, educator</h1>
+  <p>Sign in to access your saved curriculum vault, active slide decks, and export records.</p>
+</div>
+
+<form class="auth-form" method="POST" action="/login" id="loginForm">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+  <div class="auth-field">
+    <label class="auth-label" for="email">Email address</label>
+    <div class="auth-input-wrapper">
+      <input class="auth-input" id="email" name="email" type="email" required autocomplete="email" placeholder="jane.doe@university.edu" value="{{ request.form.get('email', '') }}">
+    </div>
+  </div>
+
+  <div class="auth-field">
+    <div class="auth-label-row">
+      <label class="auth-label" for="password">Password</label>
+      <a href="/forgot-password" class="auth-forgot-link">Forgot password?</a>
+    </div>
+    <div class="auth-input-wrapper">
+      <input class="auth-input auth-input-password" id="password" name="password" type="password" required autocomplete="current-password" placeholder="••••••••••••">
+      <button type="button" class="auth-toggle-pwd" data-target="password" aria-label="Show password">Show</button>
+    </div>
+  </div>
+
+  <label class="auth-checkbox-row">
+    <input type="checkbox" name="remember_me" value="true" checked>
+    <span>Keep me signed in on this computer</span>
+  </label>
+
+  <button type="submit" class="auth-submit-btn" id="loginBtn">
+    <div class="auth-btn-spinner" aria-hidden="true"></div>
+    <span class="auth-btn-text">Sign In to Atelier</span>
+    <span aria-hidden="true">→</span>
+  </button>
+</form>
+
+<div class="auth-footer-prompt">
+  New to CourseKraft? <a href="/register">Create a teacher account</a>
+  <a href="/" class="auth-guest-link">← Return to studio guest workspace</a>
+</div>
+{% endblock %}

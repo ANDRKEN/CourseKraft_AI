@@ -1,5 +1,6 @@
 import os, json
-from flask import Flask, render_template, request, jsonify, send_file
+from flask import Flask, render_template, request, jsonify, send_file, redirect, url_for, flash, session
+from flask_login import LoginManager, login_user, logout_user, login_required, current_user
 from werkzeug.exceptions import RequestEntityTooLarge
 from dotenv import load_dotenv
 load_dotenv()
@@ -7,9 +8,43 @@ from course_validation import MAX_COURSE_BYTES, validate_course, validate_genera
 from course_exports import create_pdf, create_pptx
 import gemini_provider
 import judge0_provider
+import database
+from models import User, Course
+from security import (
+    generate_csrf_token,
+    validate_csrf_token,
+    validate_password_strength,
+    validate_email_format,
+    generate_reset_token,
+    verify_reset_token,
+)
 
 app = Flask(__name__)
 app.config["MAX_CONTENT_LENGTH"] = MAX_COURSE_BYTES
+app.secret_key = os.getenv("SECRET_KEY", "coursekraft-atelier-secret-key-prod-2026")
+app.config.update(
+    SESSION_COOKIE_HTTPONLY=True,
+    SESSION_COOKIE_SAMESITE="Lax",
+)
+
+database.init_db(app)
+
+login_manager = LoginManager()
+login_manager.login_view = "login"
+login_manager.login_message = "Please sign in to access your course vault."
+login_manager.login_message_category = "info"
+login_manager.init_app(app)
+
+@login_manager.user_loader
+def load_user(user_id):
+    try:
+        return database.db_session.get(User, int(user_id))
+    except Exception:
+        return None
+
+@app.context_processor
+def inject_globals():
+    return dict(csrf_token=generate_csrf_token)
 DEFAULT_GEMINI_API_KEY = "AQ.Ab8RN6IioflNkbVPGA1k6ijey4-IvPJAMlDV3drVbnPOorbZ_w"
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "").strip() or DEFAULT_GEMINI_API_KEY
 GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.5-flash").strip() or "gemini-2.5-flash"
@@ -19,6 +54,8 @@ GEMINI_FALLBACK_MODELS = (
     tuple(model.strip() for model in _fallback_models.split(",") if model.strip())
     if _fallback_models else _DEFAULT_GEMINI_FALLBACK_MODELS
 )
+DEFAULT_ONLINECOMPILER_API_KEY = "438b6105aaa851973daed771de945a48"
+ONLINECOMPILER_API_KEY = os.getenv("ONLINECOMPILER_API_KEY", "").strip() or DEFAULT_ONLINECOMPILER_API_KEY
 JUDGE0_URL = os.getenv("JUDGE0_URL", "").strip().rstrip("/")
 JUDGE0_API_KEY = os.getenv("JUDGE0_API_KEY", "").strip()
 JUDGE0_API_KEY_HEADER = os.getenv("JUDGE0_API_KEY_HEADER", "").strip()
@@ -95,7 +132,8 @@ def index():
 
 @app.route("/api/status")
 def status():
-    return jsonify({"geminiConfigured": bool(GEMINI_API_KEY), "judge0Configured": bool(JUDGE0_URL),
+    runner_configured = bool(JUDGE0_URL) or (bool(ONLINECOMPILER_API_KEY) and not app.config.get("TESTING"))
+    return jsonify({"geminiConfigured": bool(GEMINI_API_KEY), "judge0Configured": runner_configured,
                     "geminiConnectivity": "not_checked", "model": GEMINI_MODEL,
                     "message": "Gemini is contacted only after you request generation; credentials alone do not confirm connectivity."})
 
@@ -138,6 +176,24 @@ async def generate():
     course["durationMinutes"] = duration
     course["language"] = language
     course["_source"] = "Gemini AI"
+    if current_user.is_authenticated:
+        try:
+            saved_course = Course(
+                user_id=current_user.id,
+                title=course.get("title", topic),
+                topic=topic,
+                level=level,
+                duration_minutes=duration,
+                language=language,
+            )
+            saved_course.set_content(course)
+            database.db_session.add(saved_course)
+            database.db_session.commit()
+            course["id"] = saved_course.id
+            course["saved"] = True
+            course["_source"] = f"Gemini AI (Saved to {current_user.full_name}'s vault)"
+        except Exception:
+            database.db_session.rollback()
     return jsonify({"course":course, "message":message, "source":course["_source"],
                     "generationStatus":"generated"})
 
@@ -194,23 +250,33 @@ async def verify():
     expected = expected.rstrip("\r\n")
     if not code.strip():
         return jsonify({"status":"NOT VERIFIED","message":"No code was supplied.","runnerDescription":"No code was submitted."})
-    if not JUDGE0_URL:
+    if JUDGE0_URL:
+        result = await judge0_provider.verify_code(
+            JUDGE0_URL,
+            language,
+            code,
+            expected,
+            api_key=JUDGE0_API_KEY,
+            api_key_header=JUDGE0_API_KEY_HEADER,
+            language_ids=JUDGE0_LANGUAGE_IDS,
+        )
+        return jsonify(result)
+    elif ONLINECOMPILER_API_KEY and not (app.config.get("TESTING") and not os.getenv("TEST_WITH_ONLINECOMPILER")):
+        import onlinecompiler_provider
+        result = await onlinecompiler_provider.verify_code(
+            language,
+            code,
+            expected,
+            api_key=ONLINECOMPILER_API_KEY,
+        )
+        return jsonify(result)
+    else:
         return jsonify({
             "status":"NOT VERIFIED",
             "message":"No isolated code runner is configured. The code was not executed.",
-            "details":"Configure JUDGE0_URL (and JUDGE0_API_KEY if required) to enable real execution. This is intentionally not reported as a pass.",
+            "details":"Configure JUDGE0_URL or ONLINECOMPILER_API_KEY to enable real execution. This is intentionally not reported as a pass.",
             "runnerDescription":"No isolated runner configured."
         })
-    result = await judge0_provider.verify_code(
-        JUDGE0_URL,
-        language,
-        code,
-        expected,
-        api_key=JUDGE0_API_KEY,
-        api_key_header=JUDGE0_API_KEY_HEADER,
-        language_ids=JUDGE0_LANGUAGE_IDS,
-    )
-    return jsonify(result)
 
 def _safe_export_filename(course, ext):
     if not isinstance(course, dict):
@@ -272,5 +338,314 @@ def export_pdf():
         return response
     except Exception:
         return jsonify({"error":"PDF export failed. Check the course content and installed requirements, then retry."}), 500
+
+# -------------------------------------------------------------
+# TEACHER AUTHENTICATION & ACCOUNT ROUTES
+# -------------------------------------------------------------
+
+@app.route("/register", methods=["GET", "POST"])
+def register():
+    if current_user.is_authenticated:
+        return redirect("/")
+    if request.method == "POST":
+        csrf = request.form.get("csrf_token")
+        if not validate_csrf_token(csrf):
+            flash("Session expired or invalid submission. Please try again.", "error")
+            return render_template("register.html"), 400
+
+        full_name = request.form.get("full_name", "").strip()
+        email = request.form.get("email", "").strip().lower()
+        password = request.form.get("password", "")
+        confirm_password = request.form.get("confirm_password", "")
+
+        if not full_name or len(full_name) > 120:
+            flash("Please enter your full name (up to 120 characters).", "error")
+            return render_template("register.html"), 400
+
+        email_err = validate_email_format(email)
+        if email_err:
+            flash(email_err, "error")
+            return render_template("register.html"), 400
+
+        pwd_err = validate_password_strength(password)
+        if pwd_err:
+            flash(pwd_err, "error")
+            return render_template("register.html"), 400
+
+        if password != confirm_password:
+            flash("Passwords do not match.", "error")
+            return render_template("register.html"), 400
+
+        existing = database.db_session.query(User).filter_by(email=email).first()
+        if existing:
+            flash("An account is already registered with this email address. Please sign in instead.", "error")
+            return render_template("register.html"), 400
+
+        new_user = User(full_name=full_name, email=email)
+        new_user.set_password(password)
+        database.db_session.add(new_user)
+        database.db_session.commit()
+
+        login_user(new_user)
+        flash(f"Welcome to CourseKraft AI, {new_user.full_name}! Your teacher account is ready.", "success")
+        return redirect("/")
+
+    return render_template("register.html")
+
+
+@app.route("/login", methods=["GET", "POST"])
+def login():
+    if current_user.is_authenticated:
+        return redirect("/")
+    if request.method == "POST":
+        csrf = request.form.get("csrf_token")
+        if not validate_csrf_token(csrf):
+            flash("Session expired or invalid submission. Please try again.", "error")
+            return render_template("login.html"), 400
+
+        email = request.form.get("email", "").strip().lower()
+        password = request.form.get("password", "")
+        remember = request.form.get("remember_me") == "true"
+
+        user = database.db_session.query(User).filter_by(email=email).first()
+        if not user or not user.check_password(password):
+            flash("Invalid email address or password. Please verify your credentials.", "error")
+            return render_template("login.html"), 401
+
+        login_user(user, remember=remember)
+        flash(f"Welcome back to your atelier, {user.full_name}.", "success")
+        next_page = request.args.get("next")
+        if next_page and next_page.startswith("/"):
+            return redirect(next_page)
+        return redirect("/")
+
+    return render_template("login.html")
+
+
+@app.route("/logout")
+def logout():
+    if current_user.is_authenticated:
+        logout_user()
+        flash("You have been signed out safely.", "info")
+    return redirect("/login")
+
+
+@app.route("/forgot-password", methods=["GET", "POST"])
+def forgot_password():
+    reset_link = None
+    if request.method == "POST":
+        csrf = request.form.get("csrf_token")
+        if not validate_csrf_token(csrf):
+            flash("Session expired or invalid submission. Please try again.", "error")
+            return render_template("forgot_password.html"), 400
+
+        email = request.form.get("email", "").strip().lower()
+        # Secure timed token generated; never reveals whether email is registered
+        token = generate_reset_token(email)
+        reset_link = url_for("reset_password", token=token, _external=True)
+        flash("If an account exists with this email, recovery instructions have been prepared.", "info")
+
+    return render_template("forgot_password.html", reset_link=reset_link)
+
+
+@app.route("/reset-password/<token>", methods=["GET", "POST"])
+def reset_password(token):
+    email = verify_reset_token(token)
+    if not email:
+        flash("This recovery link is invalid or has expired. Please request a new one.", "error")
+        return redirect(url_for("forgot_password"))
+
+    user = database.db_session.query(User).filter_by(email=email).first()
+    if not user:
+        flash("Account not found for this recovery token.", "error")
+        return redirect(url_for("login"))
+
+    if request.method == "POST":
+        csrf = request.form.get("csrf_token")
+        if not validate_csrf_token(csrf):
+            flash("Session expired or invalid submission. Please try again.", "error")
+            return render_template("reset_password.html", token=token), 400
+
+        password = request.form.get("password", "")
+        confirm_password = request.form.get("confirm_password", "")
+
+        pwd_err = validate_password_strength(password)
+        if pwd_err:
+            flash(pwd_err, "error")
+            return render_template("reset_password.html", token=token), 400
+
+        if password != confirm_password:
+            flash("Passwords do not match.", "error")
+            return render_template("reset_password.html", token=token), 400
+
+        user.set_password(password)
+        database.db_session.commit()
+        flash("Your password has been updated successfully. Please sign in with your new password.", "success")
+        return redirect(url_for("login"))
+
+    return render_template("reset_password.html", token=token)
+
+
+# -------------------------------------------------------------
+# TEACHER PROFILE JSON APIS
+# -------------------------------------------------------------
+
+@app.route("/api/auth/me")
+def api_auth_me():
+    if current_user.is_authenticated:
+        return jsonify({
+            "authenticated": True,
+            **current_user.to_dict()
+        })
+    return jsonify({
+        "authenticated": False,
+        "fullName": None,
+        "email": None,
+        "initials": None,
+        "courseCount": 0,
+    })
+
+
+@app.route("/api/auth/update-profile", methods=["POST"])
+@login_required
+def api_update_profile():
+    data = request.get_json(silent=True) or {}
+    full_name = str(data.get("fullName", "")).strip()
+    if not full_name or len(full_name) > 120:
+        return jsonify({"error": "Full name must be between 1 and 120 characters."}), 400
+
+    current_user.full_name = full_name
+    database.db_session.commit()
+    return jsonify({
+        "success": True,
+        "message": "Profile updated successfully.",
+        "user": current_user.to_dict()
+    })
+
+
+# -------------------------------------------------------------
+# PERSISTENT COURSE VAULT APIS
+# -------------------------------------------------------------
+
+@app.route("/api/courses", methods=["GET"])
+@login_required
+def api_list_courses():
+    courses = [c.to_dict(full=False) for c in current_user.courses]
+    return jsonify({"courses": courses, "count": len(courses)})
+
+
+@app.route("/api/courses/<course_id>", methods=["GET"])
+@login_required
+def api_get_course(course_id):
+    course = database.db_session.get(Course, course_id)
+    if not course:
+        return jsonify({"error": "Course not found."}), 404
+    if course.user_id != current_user.id:
+        return jsonify({"error": "Forbidden: You do not own this course."}), 403
+    return jsonify({"course": course.to_dict(full=True)})
+
+
+@app.route("/api/courses/save", methods=["POST"])
+@login_required
+def api_save_course():
+    data = request.get_json(silent=True)
+    if not isinstance(data, dict):
+        return jsonify({"error": "Course payload must be a JSON object."}), 400
+
+    validation_err = validate_course(data)
+    if validation_err:
+        return jsonify({"error": validation_err}), 400
+
+    course_id = data.get("id")
+    title = str(data.get("title", "Untitled Course")).strip()
+    topic = str(data.get("topic", title)).strip()
+    level = str(data.get("level", "Beginner"))
+    duration = int(data.get("durationMinutes", 45))
+    language = str(data.get("language", "Java"))
+
+    existing = None
+    if course_id:
+        existing = database.db_session.get(Course, course_id)
+        if existing and existing.user_id != current_user.id:
+            return jsonify({"error": "Forbidden: You cannot modify another teacher's course."}), 403
+
+    if existing:
+        existing.title = title
+        existing.topic = topic
+        existing.level = level
+        existing.duration_minutes = duration
+        existing.language = language
+        existing.set_content(data)
+        course_obj = existing
+    else:
+        course_obj = Course(
+            user_id=current_user.id,
+            title=title,
+            topic=topic,
+            level=level,
+            duration_minutes=duration,
+            language=language,
+        )
+        course_obj.set_content(data)
+        database.db_session.add(course_obj)
+
+    database.db_session.commit()
+    return jsonify({
+        "success": True,
+        "message": f"Course '{course_obj.title}' saved to your vault.",
+        "course": course_obj.to_dict(full=True)
+    })
+
+
+@app.route("/api/courses/<course_id>", methods=["PUT"])
+@login_required
+def api_update_course(course_id):
+    course = database.db_session.get(Course, course_id)
+    if not course:
+        return jsonify({"error": "Course not found."}), 404
+    if course.user_id != current_user.id:
+        return jsonify({"error": "Forbidden: You do not own this course."}), 403
+
+    data = request.get_json(silent=True)
+    if not isinstance(data, dict):
+        return jsonify({"error": "Invalid course payload."}), 400
+
+    validation_err = validate_course(data)
+    if validation_err:
+        return jsonify({"error": validation_err}), 400
+
+    course.title = str(data.get("title", course.title)).strip()
+    course.topic = str(data.get("topic", course.topic)).strip()
+    course.level = str(data.get("level", course.level))
+    course.duration_minutes = int(data.get("durationMinutes", course.duration_minutes))
+    course.language = str(data.get("language", course.language))
+    course.set_content(data)
+    database.db_session.commit()
+
+    return jsonify({
+        "success": True,
+        "message": "Course updated in your vault.",
+        "course": course.to_dict(full=True)
+    })
+
+
+@app.route("/api/courses/<course_id>", methods=["DELETE"])
+@login_required
+def api_delete_course(course_id):
+    course = database.db_session.get(Course, course_id)
+    if not course:
+        return jsonify({"error": "Course not found."}), 404
+    if course.user_id != current_user.id:
+        return jsonify({"error": "Forbidden: You cannot delete another teacher's course."}), 403
+
+    title = course.title
+    database.db_session.delete(course)
+    database.db_session.commit()
+    return jsonify({
+        "success": True,
+        "message": f"Course '{title}' deleted from your vault."
+    })
+
+
 if __name__ == "__main__":
     app.run(host="127.0.0.1", port=int(os.getenv("PORT","5000")), debug=False)

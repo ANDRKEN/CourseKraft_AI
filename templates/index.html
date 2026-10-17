@@ -12,6 +12,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@400;500;600&family=Plus+Jakarta+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400&display=swap" rel="stylesheet">
 
+  <meta name="csrf-token" content="{{ csrf_token() }}">
   <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
@@ -60,10 +61,51 @@
         <div id="courseOutline" class="course-outline" aria-label="Course slide outline"></div>
       </div>
 
-      <div class="sidebar-bottom">
-        <div class="status-pulse-dot" aria-hidden="true"></div>
-        <div><b>Local atelier</b><small>Session edits are held safely in memory</small></div>
+      {% if current_user.is_authenticated %}
+      <div class="sidebar-teacher-profile" id="sidebarTeacherProfile">
+        <button class="teacher-profile-trigger" id="profileDropdownBtn" type="button" aria-haspopup="true" aria-expanded="false" aria-label="Teacher account menu">
+          <div class="teacher-avatar" id="teacherAvatar">{{ current_user.initials }}</div>
+          <div class="teacher-info">
+            <b class="teacher-name" id="teacherName">{{ current_user.full_name }}</b>
+            <small class="teacher-role">Teacher &bull; {{ current_user.courses|length }} saved</small>
+          </div>
+          <span class="teacher-dropdown-arrow" aria-hidden="true">▾</span>
+        </button>
+
+        <div class="teacher-dropdown-menu" id="teacherDropdownMenu" role="menu" hidden>
+          <div class="dropdown-header">
+            <b id="dropdownUserName">{{ current_user.full_name }}</b>
+            <small id="dropdownUserEmail">{{ current_user.email }}</small>
+          </div>
+          <div class="dropdown-divider"></div>
+          <button class="dropdown-item" id="menuMyProfile" type="button" role="menuitem">
+            <span class="dropdown-icon" aria-hidden="true">👤</span> My Profile
+          </button>
+          <button class="dropdown-item" id="menuMyCourses" type="button" role="menuitem">
+            <span class="dropdown-icon" aria-hidden="true">📚</span> My Courses <span class="badge-count" id="menuCourseCount">{{ current_user.courses|length }}</span>
+          </button>
+          <button class="dropdown-item" id="menuAccountSettings" type="button" role="menuitem">
+            <span class="dropdown-icon" aria-hidden="true">⚙️</span> Account Settings
+          </button>
+          <div class="dropdown-divider"></div>
+          <a class="dropdown-item logout-item" href="/logout" role="menuitem">
+            <span class="dropdown-icon" aria-hidden="true">🚪</span> Log Out
+          </a>
+        </div>
       </div>
+      {% else %}
+      <div class="sidebar-auth-cta" id="sidebarAuthCta">
+        <a href="/login" class="btn-sidebar-signin">
+          <span class="signin-icon" aria-hidden="true">🔑</span>
+          <span>Teacher Sign In</span>
+          <span class="signin-arrow" aria-hidden="true">→</span>
+        </a>
+        <div class="sidebar-guest-notice">
+          <div class="status-pulse-dot" aria-hidden="true"></div>
+          <small>Guest mode &bull; Edits held in session</small>
+        </div>
+      </div>
+      {% endif %}
     </aside>
 
     <main class="main" id="mainContent">
@@ -80,6 +122,7 @@
             <span aria-hidden="true">✳</span> Create teaching draft <span class="btn-arrow" aria-hidden="true">↗</span>
           </button>
           <div id="workspaceExports" class="workspace-exports" hidden>
+            <button id="saveCourseBtn" class="btn btn-quiet" type="button" title="Save current course to persistent vault">💾 Save to Vault</button>
             <button id="exportPdfTop" class="btn btn-quiet" type="button">↓ Export PDF</button>
             <button id="exportPptx" class="btn btn-primary" type="button">↓ Export PPTX</button>
           </div>
@@ -434,6 +477,95 @@
         <span>Course state is held for this browser session.</span>
       </footer>
     </main>
+  </div>
+
+  <!-- MODAL DIALOGS -->
+  <div id="modalBackdrop" class="modal-backdrop" hidden></div>
+
+  <!-- 1. My Courses Modal -->
+  <div id="modalMyCourses" class="modal-dialog" role="dialog" aria-modal="true" aria-labelledby="myCoursesTitle" hidden>
+    <div class="modal-card">
+      <div class="modal-header">
+        <div>
+          <div class="eyebrow">PERSISTENT VAULT</div>
+          <h2 id="myCoursesTitle">My Saved Courses</h2>
+          <p>Courses saved to your PostgreSQL account across server restarts.</p>
+        </div>
+        <button type="button" class="modal-close-btn" data-close-modal aria-label="Close dialog">✕</button>
+      </div>
+      <div class="modal-body">
+        <div id="myCoursesLoading" class="courses-loading">Loading saved courses…</div>
+        <div id="myCoursesEmpty" class="courses-empty" hidden>
+          <div class="courses-empty-icon">📚</div>
+          <b>No saved courses yet</b>
+          <p>Generate a new course or click "Save to Vault" in your active studio to preserve your teaching kit.</p>
+        </div>
+        <div id="myCoursesList" class="courses-grid" hidden></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 2. My Profile Modal -->
+  <div id="modalMyProfile" class="modal-dialog" role="dialog" aria-modal="true" aria-labelledby="myProfileTitle" hidden>
+    <div class="modal-card modal-card-sm">
+      <div class="modal-header">
+        <div>
+          <div class="eyebrow">ACCOUNT INFORMATION</div>
+          <h2 id="myProfileTitle">Teacher Profile</h2>
+        </div>
+        <button type="button" class="modal-close-btn" data-close-modal aria-label="Close dialog">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="profile-hero">
+          <div class="profile-avatar-lg" id="profileModalAvatar">T</div>
+          <div class="profile-hero-text">
+            <h3 id="profileModalName">Educator Name</h3>
+            <p id="profileModalEmail">email@institution.edu</p>
+          </div>
+        </div>
+        <div class="profile-details-grid">
+          <div class="profile-stat-box">
+            <span class="stat-label">ACCOUNT STATUS</span>
+            <span class="stat-val" style="color: #17633e;">● Active Teacher</span>
+          </div>
+          <div class="profile-stat-box">
+            <span class="stat-label">SAVED COURSES</span>
+            <span class="stat-val" id="profileModalCourseCount">0</span>
+          </div>
+        </div>
+        <div class="modal-footer-actions">
+          <button type="button" class="btn btn-quiet" id="btnSwitchToSettings">Edit Profile Name</button>
+          <a href="/logout" class="btn btn-quiet" style="color: #a82e16;">Sign Out</a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 3. Account Settings Modal -->
+  <div id="modalAccountSettings" class="modal-dialog" role="dialog" aria-modal="true" aria-labelledby="accountSettingsTitle" hidden>
+    <div class="modal-card modal-card-sm">
+      <div class="modal-header">
+        <div>
+          <div class="eyebrow">PREFERENCES & IDENTITY</div>
+          <h2 id="accountSettingsTitle">Account Settings</h2>
+          <p>Update your teacher profile details.</p>
+        </div>
+        <button type="button" class="modal-close-btn" data-close-modal aria-label="Close dialog">✕</button>
+      </div>
+      <div class="modal-body">
+        <form id="settingsForm">
+          <div class="form-group" style="margin-bottom: 1.25rem;">
+            <label for="settingsFullName" style="display: block; font-size: 0.88rem; font-weight: 600; margin-bottom: 0.4rem;">Full Name</label>
+            <input type="text" id="settingsFullName" class="auth-input" required maxlength="120" style="width: 100%; height: 44px; padding: 0 0.85rem; border: 1px solid rgba(24,26,36,0.16); border-radius: 8px;">
+          </div>
+          <div id="settingsFeedback" class="alert alert-warning" role="alert" hidden style="margin-bottom: 1rem; padding: 0.75rem;"></div>
+          <div class="modal-footer-actions">
+            <button type="button" class="btn btn-quiet" data-close-modal>Cancel</button>
+            <button type="submit" class="btn btn-primary" id="btnSaveSettings">Save Changes</button>
+          </div>
+        </form>
+      </div>
+    </div>
   </div>
 
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
